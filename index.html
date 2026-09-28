@@ -375,6 +375,7 @@ function fixConfig(c,area){
   // capacidad fija por semana (Recovery: 27 h = 96, 40 h = 141 · Nutrición: 57 citas) y meta por turno
   if(c.capDef==null)c.capDef=area==="recovery"?96:area==="nutricion"?57:0;
   if(!c.capJornada)c.capJornada=area==="recovery"?{"40":141,"27":96}:{};
+  if(c.restarDe===undefined)c.restarDe=area==="nutricion"?"recovery":null;
   if(!c.metaPct)c.metaPct=area==="recovery"?{MAT:0.9,VES:0.85}:area==="nutricion"?{MAT:0.8,VES:0.7}:{};
   // Coach de Fuerza: cartera de 100 socios, 90% con rutina, 95% activos, 2 testimonios al mes
   c.kpi=Object.assign({cartera:100,rutina:0.9,activos:0.95,testimonios:2},c.kpi||{});
@@ -1031,6 +1032,16 @@ function semLegend(list){
 }
 function semTile(list){const o=semCount(list);return `<div class="kpi"><small>Semáforo de clases</small>${semBar(o)}<span><b class="t-ok">${o.ok}</b> verde · <b class="t-warn">${o.warn}</b> amarillo · <b class="t-bad">${o.bad}</b> rojo</span></div>`}
 function cat(ta){const n=norm(ta);if(!n||n==="total")return"total";if(n.includes("bota"))return"botas";if(n.includes("estir"))return"estiramiento";return"otra"}
+// completadas por persona, sucursal y periodo en los exports de un área (para descontarlas en otra)
+let _resta={ref:null,idx:{}};
+function restaIdx(area){
+  if(_resta.ref!==state.periods)_resta={ref:state.periods,idx:{}};
+  if(_resta.idx[area])return _resta.idx[area];
+  const g={},o={};
+  for(const x of facts()){if(x.area!==area||x.f||x.r.sa!=null)continue;const k=x.su+"|"+x.ini+"|"+x.fin+"|"+norm(x.r.t);(g[k]=g[k]||[]).push(x.r)}
+  for(const [k,rows] of Object.entries(g)){const det=rows.some(r=>cat(r.ta)!=="total");o[k]=(det?rows.filter(r=>cat(r.ta)!=="total"):rows).reduce((a,r)=>a+(r.c||0),0)}
+  return _resta.idx[area]=o;
+}
 function computeRows(list,area){
   const cfg=cfgOf(area||state.area), qty=cfg.modo==="cantidad", prom=cfg.modo==="promedio", capf=cfg.modo==="capacidad";
   const by={};
@@ -1046,7 +1057,9 @@ function computeRows(list,area){
     for(const r of use){m.at+=r.c||0;if(r.a!=null){m.agend+=r.a;m.hasAgend=true}
       if(r.sa!=null){const cu=cupoClase(r,g.su,cfg);m.n++;if(r.v!==0)m.nv++;m.cupo+=cu;m.cap+=cu}else m.cap+=r.g||0;
       const k=cat(r.ta);if(k==="botas")m.botas+=r.c||0;else if(k==="estiramiento")m.estir+=r.c||0}
-    if(res.kind==="col"){const t=cols[res.id]||(cols[res.id]={at:0,cap:0,estir:0,botas:0,agend:0,hasAgend:false,n:0,nv:0,cupo:0,fuentes:[],keys:[]});
+    if(res.kind==="col"){const t=cols[res.id]||(cols[res.id]={at:0,cap:0,estir:0,botas:0,agend:0,hasAgend:false,n:0,nv:0,cupo:0,fuentes:[],keys:[],restado:0});
+      // el export de Deportes mezcla tareas: se descuenta lo que la misma persona trae en el export de otra área (Nutrición ← Recovery)
+      if(cfg.restarDe&&g.ini){const x=restaIdx(cfg.restarDe)[g.su+"|"+g.ini+"|"+g.fin+"|"+norm(g.raw)];if(x){const q=Math.min(x,m.at);m.at-=q;t.restado+=q}}
       const who=(qty||prom||capf)?cfg.roster.find(r=>r.id===res.id):null, goal=who&&!capf?goalOf(who,cfg):null;
       // capacidad fija: capacidad semanal × semanas del periodo (una vez por periodo)
       if(capf){const pk=g.ini+"|"+g.fin;if(!t.keys.includes(pk)){t.keys.push(pk);t.cap+=g.ini&&g.fin?capPeriodo(who,cfg,g.ini,g.fin):m.cap}}
@@ -1352,6 +1365,8 @@ function viewTablero(){
   }
   if(parts.length)h+=`<div class="panel">${parts.join('<div style="height:16px"></div>')}</div>`;
   h+=rankingPanel(cols,roster);
+  const rest=ids.reduce((a,id)=>a+(cols[id]&&cols[id].restado||0),0), cfgR=cfgOf(state.area);
+  if(rest)h+=`<p class="muted small">Se descontaron ${fmtN(rest)} servicios que vienen en el export de ${esc(areaNombre(cfgR.restarDe))} para las mismas personas y periodos; aquí solo cuentan las citas de ${esc(areaNombre(state.area))}.</p>`;
   if(state.f.rango==="acum")h+=overlapNote();
   return h;
 }
@@ -1462,6 +1477,8 @@ function viewColaborador(){
   }
   const src=[...new Set(ids.flatMap(id=>cols[id]?cols[id].fuentes:[]))];
   if(src.length)h+=`<p class="muted small">Aparece en TrainingGym como: ${src.map(esc).join(" · ")}</p>`;
+  const rst=ids.reduce((a,id)=>a+(cols[id]&&cols[id].restado||0),0);
+  if(rst)h+=`<p class="muted small">Se descontaron ${fmtN(rst)} servicios que trae el export de ${esc(areaNombre(cfgOf(state.area).restarDe))} en el mismo periodo.</p>`;
   return h;
 }
 
