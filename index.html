@@ -1,0 +1,2167 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pizarra Deportes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#EEF2F1; --panel:#FFFFFF; --ink:#16302C; --muted:#5B706C; --line:#D3DDDA;
+  --brand:#1F5F55; --brand-soft:#D9EAE5;
+  --ok:#2E7D4F; --ok-bg:#D8EFDF; --warn:#9A6A00; --warn-bg:#FBEBC4; --bad:#B23A30; --bad-bg:#F7DAD6;
+  --warn-fill:#D9A21B;
+  --cell-empty:#F4F7F6;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#101816; --panel:#17221F; --ink:#E4EEEB; --muted:#96AAA5; --line:#2A3A36;
+    --brand:#6FC2B0; --brand-soft:#1E3632;
+    --ok:#7FD39C; --ok-bg:#1C3727; --warn:#F0C45A; --warn-bg:#3A2F12; --bad:#F2877D; --bad-bg:#3E1E1B;
+    --warn-fill:#D9A21B;
+    --cell-empty:#1B2724;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#101816; --panel:#17221F; --ink:#E4EEEB; --muted:#96AAA5; --line:#2A3A36;
+  --brand:#6FC2B0; --brand-soft:#1E3632;
+  --ok:#7FD39C; --ok-bg:#1C3727; --warn:#F0C45A; --warn-bg:#3A2F12; --bad:#F2877D; --bad-bg:#3E1E1B;
+  --warn-fill:#D9A21B;
+  --cell-empty:#1B2724;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Barlow,system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2,h3{font-family:"Barlow Semi Condensed",Barlow,system-ui,sans-serif;margin:0;line-height:1.15;text-wrap:balance}
+h1{font-size:1.6rem;font-weight:700}
+h2{font-size:1.3rem;font-weight:600}
+h3{font-size:1.05rem;font-weight:600}
+button,select,input{font:inherit;color:inherit}
+button:focus-visible,select:focus-visible,input:focus-visible,.drop:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+
+/* estructura: barra lateral + contenido */
+.shell{display:grid;grid-template-columns:236px minmax(0,1fr);gap:24px;max-width:1480px;margin:0 auto;padding:20px 18px 48px}
+.side{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);align-self:start;max-height:calc(100vh - 32px);overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 10px 12px}
+.side-head{padding:2px 8px 12px;border-bottom:1px solid var(--line);margin-bottom:8px}
+.side-head strong{display:block;font:700 1.3rem/1.1 "Barlow Semi Condensed",Barlow,sans-serif;margin-top:2px}
+.eyebrow{display:block;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.sgroup{margin:14px 8px 4px;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.sitem{display:flex;align-items:center;gap:9px;width:100%;border:0;background:none;padding:7px 8px;border-radius:6px;cursor:pointer;text-align:left;color:var(--ink);font-size:.95rem;line-height:1.25}
+.sitem:hover{background:var(--brand-soft)}
+.sitem[aria-current="page"]{background:var(--brand);color:var(--panel)}
+.sitem.home{font-weight:600}
+.sitem .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.sitem .dot.none{background:transparent!important;border:1.5px solid var(--line)}
+.sitem[aria-current="page"] .dot{box-shadow:0 0 0 2px var(--panel)}
+.sitem .sname{flex:1;min-width:0}
+.sitem .sval{font-size:.8rem;font-variant-numeric:tabular-nums;color:var(--muted)}
+.sitem[aria-current="page"] .sval{color:var(--panel);opacity:.85}
+.navtoggle{display:none}
+.main{min-width:0}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px}
+header.top p{margin:2px 0 0;color:var(--muted)}
+nav.tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:2px solid var(--line);margin-bottom:16px}
+nav.tabs:empty{display:none}
+nav.tabs button{background:none;border:0;padding:10px 14px;font:600 1rem "Barlow Semi Condensed",Barlow,sans-serif;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
+nav.tabs button[aria-selected="true"]{color:var(--brand);border-bottom-color:var(--brand)}
+@media (max-width:900px){
+  .shell{grid-template-columns:minmax(0,1fr);gap:14px;padding:14px 16px 40px}
+  .side{position:static;max-height:none;padding:6px}
+  .side-head{display:none}
+  .navtoggle{display:flex;width:100%;justify-content:space-between;align-items:center;gap:10px;border:0;background:none;padding:8px 10px;cursor:pointer;color:var(--ink);text-align:left}
+  .navtoggle strong{font:600 1.05rem "Barlow Semi Condensed",Barlow,sans-serif}
+  .navtoggle .chev{font-size:.85rem;color:var(--muted)}
+  .side-nav{display:none;padding:4px 4px 6px;border-top:1px solid var(--line);margin-top:4px}
+  .side.open .side-nav{display:block}
+  h1{font-size:1.35rem}
+}
+
+.btn{background:var(--brand);color:#fff;border:0;border-radius:6px;padding:9px 16px;font-weight:600;cursor:pointer}
+:root[data-theme="dark"] .btn{color:#0E1A17}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn{color:#0E1A17}}
+.btn.ghost{background:transparent;color:var(--brand);border:1.5px solid var(--brand)}
+.btn.small{padding:5px 10px;font-size:.88rem}
+.btn.danger{background:var(--bad);color:var(--panel)}
+.btn:disabled{opacity:.5;cursor:default}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+.panel-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 16px;margin-bottom:12px}
+.panel-head p{margin:2px 0 0;color:var(--muted);font-size:.9rem}
+.drop{border:2px dashed var(--brand);border-radius:10px;padding:34px 18px;text-align:center;background:var(--brand-soft);cursor:pointer}
+.drop strong{display:block;font:600 1.15rem "Barlow Semi Condensed",sans-serif}
+.drop span{color:var(--muted)}
+.drop.over{background:var(--panel)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;font-size:.93rem}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0}
+.note{border-left:4px solid var(--warn);background:var(--warn-bg);padding:10px 14px;border-radius:4px;margin:12px 0;font-size:.93rem}
+.note.bad{border-color:var(--bad);background:var(--bad-bg)}
+.note.ok{border-color:var(--ok);background:var(--ok-bg)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+label.f{display:flex;flex-direction:column;gap:3px;font-size:.85rem;color:var(--muted)}
+label.f input,label.f select{padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);min-width:140px}
+.scroll{overflow-x:auto;max-width:100%}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{padding:6px 8px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-weight:600;color:var(--muted);font-size:.82rem}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.pz th.name,.pz td.name{position:sticky;left:0;background:var(--panel);z-index:1;min-width:150px}
+.pz td.cell{text-align:center;font-variant-numeric:tabular-nums;border-left:2px solid var(--panel);min-width:62px}
+.pz td.cell.ok{background:var(--ok-bg);color:var(--ok);font-weight:600}
+.pz td.cell.warn{background:var(--warn-bg);color:var(--warn);font-weight:600}
+.pz td.cell.bad{background:var(--bad-bg);color:var(--bad);font-weight:600}
+.pz td.cell.empty{background:var(--cell-empty);color:var(--muted)}
+.pz td.cell.month{border-left:3px solid var(--ink)}
+.pz tr.sub td{font-weight:600;border-top:2px solid var(--ink)}
+.pz tr.total td{font-weight:700;border-top:3px double var(--ink)}
+.pz tr.sh td{font:700 .8rem Barlow,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--brand);padding-top:16px;border-bottom:2px solid var(--brand)}
+.pz th.mh{text-align:center;color:var(--ink);border-bottom:0}
+.pz th.wk{text-align:center;font-weight:500}
+.tag{display:inline-block;padding:1px 8px;border-radius:99px;font-size:.78rem;font-weight:600;background:var(--brand-soft);color:var(--brand)}
+.tag.ok{background:var(--ok-bg);color:var(--ok)}.tag.bad{background:var(--bad-bg);color:var(--bad)}.tag.warn{background:var(--warn-bg);color:var(--warn)}
+.bar{height:10px;background:var(--cell-empty);border-radius:5px;overflow:hidden;min-width:120px}
+.bar i{display:block;height:100%;background:var(--brand)}
+.g-ok{background:var(--ok)!important}.g-warn{background:var(--warn-fill)!important}.g-bad{background:var(--bad)!important}.g-empty{background:var(--line)!important}
+.t-ok{color:var(--ok)}.t-warn{color:var(--warn)}.t-bad{color:var(--bad)}.t-empty{color:var(--muted)}
+.seg{display:inline-flex;border:1.5px solid var(--brand);border-radius:6px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;color:var(--brand);font-weight:600;font-size:.88rem}
+.seg button[aria-pressed="true"]{background:var(--brand);color:var(--panel)}
+.empty-state{text-align:center;padding:40px 16px;color:var(--muted)}
+.empty-state .row{justify-content:center;margin-top:14px}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+.status{font-size:.82rem;color:var(--muted)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;color:var(--muted);margin-top:10px}
+.legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px;background:var(--c)}
+input.inl{width:70px;padding:4px 6px;border:1px solid var(--line);border-radius:5px;background:var(--panel)}
+input.inl.wide{width:100%;min-width:220px}
+select.inl{padding:4px 6px;border:1px solid var(--line);border-radius:5px;background:var(--panel)}
+
+/* filtros */
+.filters{display:flex;flex-wrap:wrap;gap:14px 30px;align-items:flex-start;padding:14px 18px}
+.fgroup{display:flex;flex-direction:column;gap:6px;min-width:0}
+.flabel{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1.5px solid var(--line);background:var(--panel);border-radius:99px;padding:5px 13px;font-weight:600;font-size:.9rem;cursor:pointer;color:var(--ink);line-height:1.3}
+.chip:hover{border-color:var(--brand)}
+.chip[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:var(--panel)}
+.chip .sub{font-weight:500;opacity:.75;font-size:.8rem;margin-left:4px}
+.stepper{display:flex;gap:4px;align-items:center;flex-wrap:nowrap}
+.stepper button{border:1.5px solid var(--line);background:var(--panel);border-radius:6px;width:34px;height:34px;cursor:pointer;font-size:1.1rem;line-height:1;color:var(--ink)}
+.stepper button:disabled{opacity:.4;cursor:default}
+.stepper input[type=date]{padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);height:34px;color:var(--ink)}
+.sbar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--cell-empty);min-width:120px;margin:6px 0 4px}
+.sbar i{display:block;height:100%}
+.semleg{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:.82rem;color:var(--muted);margin-top:8px}
+.semleg b{font-weight:600}
+tr.det td{background:var(--cell-empty)}
+.clslist{display:flex;flex-wrap:wrap;gap:6px 16px;padding:2px 0 4px 8px}
+.cls{white-space:nowrap;font-size:.88rem}
+.stepper select{padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);min-width:0;max-width:240px;height:34px}
+
+/* indicadores */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.kpi small{display:block;font-size:.72rem;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.kpi b{display:block;font:700 1.75rem/1.15 "Barlow Semi Condensed",Barlow,sans-serif;font-variant-numeric:tabular-nums;margin-top:4px}
+.kpi span{font-size:.82rem;color:var(--muted)}
+.bgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.bcard{display:flex;flex-direction:column;gap:4px;text-align:left;border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--panel);cursor:pointer;color:var(--ink)}
+.bcard:hover{border-color:var(--brand);background:var(--brand-soft)}
+.bcard .bl{font:600 1.1rem "Barlow Semi Condensed",Barlow,sans-serif}
+.bcard .bs{font-size:.82rem;color:var(--muted)}
+.bcard b{font:700 1.6rem/1.1 "Barlow Semi Condensed",Barlow,sans-serif;font-variant-numeric:tabular-nums;margin-top:4px}
+.bcard .tag{align-self:flex-start;margin-top:4px}
+.meter{position:relative;height:10px;background:var(--cell-empty);border-radius:5px;margin:6px 0 2px}
+.meter i{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
+.meter b{position:absolute;top:-4px;bottom:-4px;width:0;border-left:2px solid var(--ink);margin:0}
+.section-label{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 8px}
+.pending-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+
+/* ranking */
+.rk-list{display:flex;flex-direction:column}
+.rk{display:grid;grid-template-columns:34px minmax(130px,220px) 1fr 104px;gap:6px 14px;align-items:center;padding:10px 6px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;width:100%;cursor:pointer;color:var(--ink)}
+button.rk:hover{background:var(--brand-soft)}
+.rk .pos{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:700 .95rem "Barlow Semi Condensed",Barlow,sans-serif;background:var(--cell-empty);color:var(--muted);font-variant-numeric:tabular-nums}
+.rk .pos.top{background:var(--brand);color:var(--panel)}
+.rk .who strong{display:block;font-weight:600}
+.rk .who span{font-size:.8rem;color:var(--muted)}
+.rk .track{position:relative;height:22px;background:var(--cell-empty);border-radius:4px}
+.rk .track i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+.rk .track .mk{position:absolute;top:-4px;bottom:-4px;border-left:2px dashed var(--ink)}
+.rk .val{text-align:right;font-variant-numeric:tabular-nums;line-height:1.2}
+.rk .val b{font:700 1.3rem "Barlow Semi Condensed",Barlow,sans-serif}
+.rk .val span{display:block;font-size:.78rem;color:var(--muted)}
+.rk-axis{cursor:default;padding-top:0;padding-bottom:4px}
+.rk-axis .track{background:none;height:16px}
+.rk-axis em{position:absolute;top:0;transform:translateX(-50%);font-size:.72rem;font-style:normal;color:var(--muted);white-space:nowrap}
+.rk-axis em.m{color:var(--ink);font-weight:600}
+@media (max-width:640px){
+  .rk{grid-template-columns:30px 1fr 84px}
+  .rk .track{grid-column:2/4;grid-row:2}
+  .rk-axis .who,.rk-axis .val{display:none}
+}
+
+/* gráfica por colaborador */
+.vchart{position:relative;display:flex;gap:6px;height:240px;padding-top:20px}
+.vcol{flex:1 1 0;min-width:40px;display:flex;flex-direction:column}
+.vwrap{flex:1;position:relative;border-bottom:1px solid var(--line)}
+.vwrap i{position:absolute;bottom:0;left:14%;right:14%;border-radius:3px 3px 0 0;min-height:2px}
+.vwrap i span{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);font-size:.7rem;font-weight:600;white-space:nowrap;padding-bottom:2px;color:var(--ink);font-variant-numeric:tabular-nums}
+.vchart.dense .vwrap i span{display:none}
+.vlab{height:22px;line-height:22px;font-size:.72rem;color:var(--muted);text-align:center;white-space:nowrap}
+.vmeta{position:absolute;left:0;right:0;bottom:calc(22px + (100% - 42px) * var(--m));border-top:2px dashed var(--ink);pointer-events:none;z-index:1}
+.vmeta span{position:absolute;right:0;bottom:2px;font-size:.72rem;font-weight:600;background:var(--panel);padding:0 4px}
+.colhead{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+.colhead h2{font-size:1.6rem}
+.colhead .meta-line{color:var(--muted);font-size:.9rem;margin-top:2px}
+.rankpill{display:flex;gap:8px;flex-wrap:wrap}
+.rankpill span{background:var(--brand-soft);color:var(--brand);border-radius:8px;padding:6px 10px;font-weight:600;font-size:.88rem}
+.rankpill span b{font:700 1.15rem "Barlow Semi Condensed",Barlow,sans-serif}
+
+@media (max-width:600px){.filters{gap:12px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="side" id="side"></aside>
+  <div class="main">
+    <header class="top">
+      <div>
+        <span class="eyebrow" id="eyebrow">Deportes</span>
+        <h1 id="h1">Deportes · Vivo 47</h1>
+        <p id="sub"></p>
+      </div>
+      <div class="status" id="status">Guardado local</div>
+    </header>
+    <nav class="tabs" role="tablist" id="tabs"></nav>
+    <main id="view"></main>
+  </div>
+</div>
+
+<script>
+// Base compartida en Supabase (mismo proyecto que la Pizarra 1%). La llave publicable está hecha para ir en el navegador; la seguridad la dan las reglas de schema.sql.
+window.DEPORTES_SUPABASE={url:"https://gwluradnvcfhyghkapfw.supabase.co",key:"sb_publishable_tD6-SAp3DTZMWedGZ3oG7A_22Ey_OTy"};
+</script>
+<script>
+(function(){
+"use strict";
+
+/* ---------- catálogo ---------- */
+const AREAS=[
+  {id:"recovery",    nombre:"Recovery",        grupo:"areas"},
+  {id:"nutricion",   nombre:"Nutrición",       grupo:"areas"},
+  {id:"mobility",    nombre:"Mobility",        grupo:"areas"},
+  {id:"core",        nombre:"Core",            grupo:"areas"},
+  {id:"fullevo",     nombre:"Full Evolution",  grupo:"areas"},
+  {id:"fuerza",      nombre:"Coach de Fuerza", grupo:"areas"},
+  {id:"tutoriales",  nombre:"Tutoriales",      grupo:"areas"},
+  {id:"testimonios", nombre:"Testimonios",     grupo:"areas"},
+  {id:"pulse",       nombre:"Pulse",           grupo:"estudios"},
+  {id:"exhala",      nombre:"Exhala",          grupo:"estudios"},
+  {id:"neoride",     nombre:"NeoRide",         grupo:"estudios"},
+  {id:"aura",        nombre:"Aura",            grupo:"estudios"},
+  {id:"ft",          nombre:"FT",              grupo:"estudios"},
+  {id:"salon2",      nombre:"Salón 2",         grupo:"estudios"},
+  {id:"baile",       nombre:"Baile",           grupo:"estudios"}
+];
+const GRUPOS=[["areas","Áreas"],["estudios","Estudios"]];
+const SUCURSALES=[
+  {id:"NAC", nombre:"Naciones Unidas", corto:"NAC", re:/naciones/},
+  {id:"GOU", nombre:"Gourmetería",     corto:"GOU", re:/gourmet/},
+  {id:"VR",  nombre:"Valle Real",      corto:"VR",  re:/valle\s*real/}
+];
+const RECOVERY_ROSTER=[]; // el equipo vive en la base de datos
+const DEFAULT_TIERS=[{min:1.0, etiqueta:"Cumple meta"}];
+const TURNOS = {MAT:"Turno matutino", VES:"Turno vespertino"};
+const TURNO_CORTO = {MAT:"Matutino", VES:"Vespertino"};
+const RECURSO_RE = /\b(cama|camas|bota|botas|camilla|camillas|tina|tinas|sauna|hidromasaje|presoterapia|sala|area|equipo)\b/;
+
+const SYN = {
+  tecnico:["tecnico","colaborador","coach","entrenador","instructor","empleado","staff","personal","nombre del tecnico","terapeuta"],
+  tarea:["tarea","servicio","actividad","clase","tipo de tarea","tipo"],
+  completadas:["completadas","completado","completados","realizadas","atendidos","asistentes","asistencias","asistencia","sesiones"],
+  target:["target","objetivo","meta","capacidad","aforo","plazas","agenda 100%","disponibles"],
+  inicio:[], fin:[],
+  fecha:["fecha","date","dia","semana"],
+  agendados:["agendados","reservas","reservados","citas","agendadas"],
+  sucursal:["sucursal","centro","club","sede"],
+  hora:["hora","horario"],
+  sala:["sala","salon","studio","estudio"],
+  estado:["estado","estatus","status"]
+};
+// inicio/fin se detectan por palabra completa para no confundir "fin" con otros encabezados
+const RX_FIELD = {inicio:/\b(inicio|inicial|desde)\b/, fin:/\b(fin|final|hasta|termino)\b/};
+const FIELD_LABEL = {tecnico:"Técnico / colaborador", tarea:"Tarea", completadas:"Completadas", target:"Target (capacidad)", inicio:"Fecha de inicio", fin:"Fecha de fin", fecha:"Fecha (día)", agendados:"Agendados", sucursal:"Sucursal", hora:"Hora", sala:"Sala", estado:"Estado"};
+// reporte de clases: la sala decide el estudio; Baile junta las clases de baile de cualquier sala
+const SALA_RULES=[[/pulse/,"pulse"],[/exhala/,"exhala"],[/neo ?ride|cycling|ciclismo|spinning/,"neoride"],[/aura/,"aura"],[/functional|funcional|\bft\b/,"ft"],[/salon ?2\b/,"salon2"]];
+const BAILE_DEF=["baile","ritmos latinos","cardio dance","zumba","salsa","bachata","danza"];
+
+/* ---------- estado ---------- */
+const state = {
+  area:"resumen", tab:"tablero", periods:[], configs:{}, pending:null,
+  metric:"ocup", bonoMonth:null, db:null, downloads:null, sample:null, dirty:null,
+  colab:null, confirmDel:null, navOpen:false, open:{}, capturas:{}, capMes:null, capDirty:null, diario:{}, diaDirty:null, global:{extra:{},salas:{},baile:BAILE_DEF.slice()},
+  f:{suc:"all", turno:"all", rango:"acum", valor:{}, valid:false}
+};
+
+/* ---------- utilidades ---------- */
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function norm(s){return String(s==null?"":s).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/\s+/g," ").trim()}
+function tidy(s){return String(s==null?"":s).replace(/\s+/g," ").trim()}
+function titleCase(s){return tidy(s).toLowerCase().replace(/(^|\s)(\S)/g,(m,a,b)=>a+b.toUpperCase())}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function num(v){if(v==null||v==="")return 0;if(typeof v==="number")return isFinite(v)?v:0;const n=parseFloat(String(v).replace(/[^\d.,-]/g,"").replace(/,/g,""));return isFinite(n)?n:0}
+function pct(v,d=0){return v==null||!isFinite(v)?"–":(v*100).toFixed(d)+"%"}
+function fmtN(n){return Math.round(n||0).toLocaleString("es-MX")}
+function iso(d){const z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10)}
+function parseISO(s){const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+function monday(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());const w=(x.getDay()+6)%7;return addDays(x,-w)}
+const MESES=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const DIAS=["dom","lun","mar","mié","jue","vie","sáb"];
+function fmtShort(s){const d=parseISO(s);return d.getDate()+" "+MESES[d.getMonth()].slice(0,3)}
+function monthKey(s){return s.slice(0,7)}
+function monthLabel(k){const [y,m]=k.split("-");return MESES[+m-1].charAt(0).toUpperCase()+MESES[+m-1].slice(1)+" "+y}
+function toDate(v){
+  if(v instanceof Date&&!isNaN(v))return v;
+  if(typeof v==="number"&&v>20000&&v<80000){return new Date(Math.round((v-25569)*86400000)+new Date().getTimezoneOffset()*60000)}
+  if(typeof v==="string"){const m=v.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);if(m){let y=+m[3];if(y<100)y+=2000;return new Date(y,+m[2]-1,+m[1])}
+    const m2=v.match(/(\d{4})-(\d{2})-(\d{2})/);if(m2)return new Date(+m2[1],+m2[2]-1,+m2[3])}
+  return null;
+}
+function spanDays(a,b){return Math.round((parseISO(b)-parseISO(a))/86400000)+1}
+function sucById(id){return SUCURSALES.find(s=>s.id===id)}
+function sucNombre(id){const s=sucById(id);return s?s.nombre:id}
+function sucCorto(id){const s=sucById(id);return s?s.corto:id}
+function detectSuc(text){const n=norm(text);if(!n)return null;const hits=SUCURSALES.filter(s=>s.re.test(n));return hits.length===1?hits[0].id:null}
+function areaById(id){return AREAS.find(a=>a.id===id)}
+function areaNombre(id){if(id==="deportes")return"Deportes (varias áreas)";const a=areaById(id);return a?a.nombre:id}
+function grupoNombre(g){const x=GRUPOS.find(x=>x[0]===g);return x?x[1]:g}
+// vocabulario: las áreas tienen agenda por colaborador; los estudios, aforo por instructor
+// modo "cantidad": Completadas contra una meta mensual en número (ej. socios activos), sin usar Target
+function L(a){
+  const id=a||state.area, ar=areaById(id), est=ar&&ar.grupo==="estudios";
+  const base=est
+    ?{persona:"Instructor",personas:"instructores",cap:"Aforo",ocup:"% aforo ocupado",ocupado:"ocupado",equipo:"Instructores y metas",at:"Atendidos",atl:"atendidos"}
+    :{persona:"Colaborador",personas:"colaboradores",cap:"Agenda 100%",ocup:"% agenda ocupada",ocupado:"ocupada",equipo:"Equipo y metas",at:"Atendidos",atl:"atendidos"};
+  if(est)Object.assign(base,{at:"Asistentes",atl:"asistentes"});
+  const modo=ar?cfgOf(id).modo:"ocupacion";
+  if(modo==="capacidad")return Object.assign(base,{capfija:true,cap:"Capacidad"});
+  if(modo==="cartera")return Object.assign(base,{cartera:true,persona:"Coach",personas:"coaches"});
+  if(modo==="cantidad"||modo==="promedio"){
+    const u=modo==="promedio"?"asistentes":(cfgOf(id).unidad||"completadas");
+    return Object.assign(base,{qty:true,prom:modo==="promedio",cap:"Meta ("+u+(modo==="promedio"?" por clase":"")+")",ocup:"% de la meta",ocupado:"de la meta",at:u.charAt(0).toUpperCase()+u.slice(1),atl:u});
+  }
+  return base;
+}
+function fixConfig(c,area){
+  if(!c||!Array.isArray(c.roster))c={roster:area==="recovery"?clone(RECOVERY_ROSTER):[]};
+  c.roster=c.roster.map(r=>Object.assign({sucursal:"NAC",turno:"MAT",meta:0.9,alias:[]},r));
+  c.extra=c.extra||{}; c.tiers=c.tiers||clone(DEFAULT_TIERS);
+  if(!c.modo)c.modo=area==="fuerza"?"cartera":(area==="recovery"||area==="nutricion")?"capacidad":(area==="mobility"||area==="fullevo"||area==="core")?"accesos":area==="tutoriales"?"ingresos":"ocupacion";
+  // Mobility / Full Evolution / Core: % de los socios que van a fuerza que pasan por el área
+  if(c.metaAcc==null)c.metaAcc=area==="mobility"?0.8:0.3;
+  if(!Array.isArray(c.sucs))c.sucs=area==="fullevo"?["VR"]:area==="core"?["NAC"]:["NAC","GOU","VR"];
+  if(c.metaIng==null)c.metaIng=26000;
+  // capacidad fija por semana (Recovery: 27 h = 96, 40 h = 141 · Nutrición: 57 citas) y meta por turno
+  if(c.capDef==null)c.capDef=area==="recovery"?96:area==="nutricion"?57:0;
+  if(!c.capJornada)c.capJornada=area==="recovery"?{"40":141,"27":96}:{};
+  if(!c.metaPct)c.metaPct=area==="recovery"?{MAT:0.9,VES:0.85}:area==="nutricion"?{MAT:0.8,VES:0.7}:{};
+  // Coach de Fuerza: cartera de 100 socios, 90% con rutina, 95% activos, 2 testimonios al mes
+  c.kpi=Object.assign({cartera:100,rutina:0.9,activos:0.95,testimonios:2},c.kpi||{});
+  c.metasTurno=c.metasTurno||{}; c.cupos=c.cupos||{}; c.semaforo=c.semaforo||{};
+  // meta con la que entran los nuevos (en estudios: % de aforo)
+  if(c.metaDef==null)c.metaDef=areaById(area)&&areaById(area).grupo==="estudios"?0.8:0.9;
+  return c;
+}
+// meta mensual en número de una persona: la suya propia o la de su sucursal y turno
+function goalOf(r,cfg){if(r.metaN!=null&&r.metaN!=="")return +r.metaN;const v=cfg.metasTurno[r.sucursal+"|"+r.turno];return v==null||v===""?null:+v}
+function monthFrac(ini,fin){if(!ini||!fin||isFullMonth(ini,fin))return 1;return spanDays(ini,fin)/30.44}
+function capSemOf(r,cfg){
+  if(r&&r.capSem!=null&&r.capSem!=="")return +r.capSem||0;
+  const j=r&&r.jornada?cfg.capJornada[r.jornada]:null;return +(j||cfg.capDef)||0;
+}
+// reparto de la capacidad semanal por día (0 = domingo) según día de descanso, jornada y horas de fin de semana
+function fraccionDia(r){
+  if(!r||r.descanso==null||r.descanso==="")return null;
+  const jor=+r.jornada||0, hfs=r.horasFin!=null&&r.horasFin!==""?+r.horasFin:(jor===40?5:null);
+  // "fin": descansa uno de los dos días del fin de semana; trabaja el otro (se reparte mitad sábado, mitad domingo)
+  if(r.descanso==="fin"){
+    const h=Array(7).fill(0);
+    if(jor&&hfs!=null){for(let d=1;d<=5;d++)h[d]=Math.max(0,jor-hfs)/5;h[0]=h[6]=hfs/2}
+    else{for(let d=1;d<=5;d++)h[d]=1;h[0]=h[6]=0.5}
+    const tot=h.reduce((a,b)=>a+b,0);return h.map(x=>x/tot);
+  }
+  const desc=+r.descanso, work=[0,1,2,3,4,5,6].filter(d=>d!==desc), fin=work.filter(d=>d===0||d===6), sem=work.filter(d=>d>=1&&d<=5), h=Array(7).fill(0);
+  if(jor&&hfs!=null&&sem.length){fin.forEach(d=>h[d]=hfs);sem.forEach(d=>h[d]=Math.max(0,jor-hfs*fin.length)/sem.length)}
+  else work.forEach(d=>h[d]=1);
+  const tot=h.reduce((a,b)=>a+b,0);return tot>0?h.map(x=>x/tot):null;
+}
+// capacidad de un periodo: día por día si tiene descanso definido; si no, promedio semanal
+function capPeriodo(r,cfg,ini,fin){
+  const cs=capSemOf(r,cfg);if(!cs)return 0;
+  const fr=fraccionDia(r);if(!fr)return cs*spanDays(ini,fin)/7;
+  let t=0;for(let d=parseISO(ini);iso(d)<=fin;d=addDays(d,1))t+=cs*fr[d.getDay()];return t;
+}
+function horarioTxt(r){
+  if(!r||r.descanso==null||r.descanso==="")return"";
+  const jor=+r.jornada||0;
+  if(r.descanso==="fin")return (jor?jor+" h · ":"")+"descansa un día del fin de semana"+(jor===40?" · el otro cubre "+(r.horasFin||5)+" h":"");
+  return (jor?jor+" h · ":"")+"descansa "+DIAS_LARGO[+r.descanso].toLowerCase()+(jor===40?" · fin de semana "+(r.horasFin||5)+" h":"");
+}
+const DIAS_LARGO=["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+function metaTxt(r,area){const a=area||state.area,cfg=cfgOf(a);if(cfg.modo==="ocupacion")return pct(r.meta);
+  if(cfg.modo==="capacidad")return pct(metaOf(r.id,a))+" de "+fmtN(capSemOf(r,cfg))+" por semana";
+  if(cfg.modo==="cartera"){const k=cfg.kpi;return "cartera "+k.cartera+" · rutina "+pct(k.rutina)+" · activos "+pct(k.activos)}const g=goalOf(r,cfg);return g==null?"sin meta":fmtN(g)+" "+(cfg.modo==="promedio"?"por clase":(cfg.unidad||""))}
+function cfgOf(area){if(!areaById(area))return fixConfig(null,area);return state.configs[area]||(state.configs[area]=fixConfig(null,area))}
+function configPath(area){return area==="recovery"?"config/equipo":"config/"+area}
+
+/* ---------- almacenamiento: db compartida o local ---------- */
+const LS_P="recovery_periods_v1", LS_C="recovery_config_v1", LS_CS="deportes_configs_v1", LS_F="recovery_filtros_v1", LS_A="deportes_area_v1", LS_G="deportes_global_v1", LS_K="deportes_capturas_v1", LS_D="deportes_diario_v1";
+function fixGlobal(g){g=g&&typeof g==="object"?g:{};g.extra=g.extra||{};g.pctFuerza=Object.assign({NAC:0.3,VR:0.45,GOU:0.5},g.pctFuerza||{});g.salas=g.salas||{};if(!Array.isArray(g.baile))g.baile=BAILE_DEF.slice();return g}
+// a qué estudio va una sala (lo asignado a mano gana sobre las reglas)
+function salaArea(sa){const n=norm(sa);if(!n)return null;if(state.global.salas[n])return state.global.salas[n];for(const [re,a] of SALA_RULES)if(re.test(n))return a;return null}
+function isBaile(ta){const n=norm(ta);return !!n&&state.global.baile.some(k=>{const kk=norm(k);return kk&&n.includes(kk)})}
+function horaTxt(v){
+  if(v instanceof Date&&!isNaN(v))return String(v.getHours()).padStart(2,"0")+":"+String(v.getMinutes()).padStart(2,"0");
+  if(typeof v==="number"&&v>=0&&v<1){const m=Math.round(v*1440);return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0")}
+  const m=String(v==null?"":v).match(/(\d{1,2}):(\d{2})/);return m?m[1].padStart(2,"0")+":"+m[2]:null;
+}
+function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+(function loadLocal(){
+  const p=lsGet(LS_P); if(Array.isArray(p))state.periods=p;
+  const cs=lsGet(LS_CS);
+  if(cs&&typeof cs==="object")for(const [a,c] of Object.entries(cs))if(areaById(a))state.configs[a]=fixConfig(c,a);
+  if(!state.configs.recovery){const old=lsGet(LS_C);if(old)state.configs.recovery=fixConfig(old,"recovery")}
+  state.global=fixGlobal(lsGet(LS_G));
+  const k=lsGet(LS_K); if(k&&typeof k==="object")state.capturas=k;
+  const dd=lsGet(LS_D); if(dd&&typeof dd==="object")state.diario=dd;
+  const f=lsGet(LS_F); if(f&&f.suc)state.f={suc:f.suc,turno:f.turno||"all",rango:f.rango||"acum",valor:Object.assign({},f.valor),valid:!!f.valid,hDesde:f.hDesde||"",hHasta:f.hHasta||""};
+  let a=null; try{a=decodeURIComponent((location.hash||"").slice(1))}catch(e){}
+  if(!(a==="resumen"||areaById(a)))a=lsGet(LS_A);
+  if(a==="resumen"||areaById(a))state.area=a;
+})();
+function saveF(){lsSet(LS_F,state.f)}
+function setStatus(t){document.getElementById("status").textContent=t}
+function idleStatus(){setStatus(state.db?"Sincronizado con el equipo":"Guardado local")}
+
+async function savePeriod(p){
+  if(state.db){await state.db.doc("periodos/"+p.id).set(p)}
+  else{state.periods=state.periods.filter(x=>x.id!==p.id).concat([p]);lsSet(LS_P,state.periods);render()}
+}
+async function deletePeriod(id){
+  if(state.db){await state.db.doc("periodos/"+id).delete()}
+  else{state.periods=state.periods.filter(x=>x.id!==id);lsSet(LS_P,state.periods);render()}
+}
+async function saveConfig(cfg,area){
+  state.configs[area]=fixConfig(cfg,area);
+  if(state.db){await state.db.doc(configPath(area)).set(state.configs[area])}
+  else{lsSet(LS_CS,state.configs)}
+  render();
+}
+// nombres que no cuentan en ninguna área (líderes, bajas…)
+// captura mensual manual: un documento por área y mes
+async function saveCaptura(area,mes,datos){
+  const id=area+"_"+mes, doc={area,mes,datos,actualizado:new Date().toISOString()};
+  state.capturas[id]=doc;
+  if(state.db){await state.db.doc("capturas/"+id).set(doc)}else{lsSet(LS_K,state.capturas)}
+  render();
+}
+function capOf(area,mes){const d=state.capturas[area+"_"+mes];return d&&d.datos||{}}
+function capMeses(area){return Object.values(state.capturas).filter(d=>d.area===area&&d.datos&&Object.keys(d.datos).length).map(d=>d.mes).sort()}
+// mes que se ve: el elegido; si no, el del filtro si es Mes; si no, el último capturado; si no, el actual
+function capMesFor(area){
+  if(state.capMes)return state.capMes;
+  if(state.f.rango==="mes"&&state.f.valor.mes)return state.f.valor.mes;
+  const ms=capMeses(area);return ms.length?ms[ms.length-1]:iso(new Date()).slice(0,7);
+}
+function capMesPicker(area){
+  const cur=capMesFor(area), hoy=iso(new Date()).slice(0,7), set=new Set(capMeses(area).concat([hoy,cur]));
+  for(let i=1;i<=5;i++){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);set.add(iso(d).slice(0,7))}
+  const ms=[...set].sort().reverse(), con=new Set(capMeses(area));
+  return `<label class="f">Mes<select id="capMesSel">${ms.map(k=>`<option value="${k}" ${k===cur?"selected":""}>${monthLabel(k)}${con.has(k)?"":" · sin captura"}</option>`).join("")}</select></label>`;
+}
+// indicadores del coach; el excedente de cartera no cuenta: la rutina se mide sobre la cartera meta (100)
+function cartScore(d,k){
+  if(!d)return null;
+  const has=v=>v!=null&&v!=="", base=+k.cartera||100, o={};
+  o.car=has(d.cartera)?+d.cartera:null; o.rut=has(d.rutina)?+d.rutina:null;
+  o.pRut=o.rut!=null?Math.min(o.rut,base)/base:null; o.pAct=has(d.activos)?+d.activos/100:null; o.tes=has(d.testimonios)?+d.testimonios:null;
+  o.okCar=o.car!=null&&o.car>=base; o.okRut=o.pRut!=null&&o.pRut>=k.rutina; o.okAct=o.pAct!=null&&o.pAct>=k.activos; o.okTes=o.tes!=null&&o.tes>=k.testimonios;
+  const parts=[o.car!=null?Math.min(o.car/base,1):null,o.pRut!=null?Math.min(o.pRut/k.rutina,1):null,o.pAct!=null?Math.min(o.pAct/k.activos,1):null].filter(v=>v!=null);
+  o.n=parts.length; o.score=parts.length?parts.reduce((a,b)=>a+b,0)/parts.length:null;
+  o.metas=[o.okCar,o.okRut,o.okAct].filter(Boolean).length; o.cumple=o.metas===3;
+  if(!o.n&&o.tes==null)return null;
+  return o;
+}
+function okTag(ok,txt){return `<span class="tag ${ok?"ok":"bad"}">${txt}</span>`}
+function cartItems(area,mes){const k=cfgOf(area).kpi,d=capOf(area,mes);return rosterSel({area}).map(r=>({r,s:cartScore(d[r.id],k)}))}
+function cartKpis(items,k){
+  const con=items.filter(x=>x.s), n=f=>con.filter(x=>x.s[f]).length;
+  return `<div class="kpis">`+kpi("Capturados",`${con.length} <span style="font-size:1rem;color:var(--muted)">de ${items.length}</span>`,"coaches con datos este mes")+
+    kpi("Cartera",`${n("okCar")}`,"con "+k.cartera+" socios o más")+kpi("Con rutina",`${n("okRut")}`,pct(k.rutina)+" o más (sobre "+k.cartera+")")+
+    kpi("Socios activos",`${n("okAct")}`,pct(k.activos)+" o más en el mes")+kpi("Bono de cartera",`${n("cumple")}`,"cumplen las 3",n("cumple")?"ok":"")+
+    kpi("Testimonios",`${n("okTes")}`,k.testimonios+" o más de cambio de vida")+`</div>`;
+}
+function cartRow(x,k,showSuc,label){const o=x.s||{};
+  return `<tr><td>${esc(label||x.r.nombre)}</td>${showSuc?`<td>${esc(sucCorto(x.r.sucursal))}</td>`:""}<td class="num">${o.car!=null?fmtN(o.car):"–"}</td><td class="num">${o.rut!=null?fmtN(o.rut):"–"}</td>
+    <td class="num">${o.pRut!=null?`<span class="tag ${o.okRut?"ok":"bad"}">${pct(o.pRut)}</span>`:"–"}</td><td class="num">${o.pAct!=null?`<span class="tag ${o.okAct?"ok":"bad"}">${pct(o.pAct)}</span>`:"–"}</td>
+    <td>${x.s&&o.n?okTag(o.cumple,o.cumple?"Cumple":"No alcanza · "+o.metas+"/3"):'<span class="muted">Sin captura</span>'}</td>
+    <td class="num">${o.tes!=null?fmtN(o.tes):"–"}</td><td>${o.tes!=null?okTag(o.okTes,o.okTes?"Cumple":"No alcanza"):'<span class="muted">Sin captura</span>'}</td></tr>`;
+}
+function cartHead(showSuc,first){return `<th>${first||"Coach"}</th>${showSuc?"<th>Sucursal</th>":""}<th class="num">Cartera</th><th class="num">Con rutina</th><th class="num">% rutina</th><th class="num">% activos</th><th>Bono de cartera</th><th class="num">Testimonios</th><th>Bono de testimonios</th>`}
+function viewTableroCartera(){
+  const area=state.area, cfg=cfgOf(area), k=cfg.kpi, mes=capMesFor(area), items=cartItems(area,mes), showSuc=state.f.suc==="all";
+  let h=filterBar({fecha:false})+`<div class="panel"><div class="row" style="justify-content:space-between;align-items:flex-end">${capMesPicker(area)}
+    <span class="muted small">Se captura a mano en Equipo y metas. Cartera: ${k.cartera} socios · rutina ${pct(k.rutina)} (sobre ${k.cartera}; el excedente no cuenta) · activos ${pct(k.activos)} · ${k.testimonios} testimonios al mes.</span></div></div>`;
+  if(!items.length)return h+`<div class="panel empty-state"><h2>Sin coaches registrados</h2><p>Dalos de alta en Equipo y metas.</p></div>`;
+  if(!items.some(x=>x.s))return h+`<div class="panel empty-state"><h2>Sin captura de ${monthLabel(mes)}</h2><p>Llena cartera, socios con rutina, % de activos y testimonios de cada coach.</p><div class="row"><button class="btn" data-go="equipo">Capturar en Equipo y metas</button></div></div>`;
+  h+=cartKpis(items,k);
+  const rk=items.filter(x=>x.s&&x.s.n).map(x=>({attr:`data-colab="${esc(x.r.id)}"`,label:x.r.nombre,c:x.s.score,
+    sub:`${showSuc?esc(sucCorto(x.r.sucursal))+" · ":""}cartera ${x.s.car!=null?fmtN(x.s.car):"–"} · rutina ${pct(x.s.pRut)} · activos ${pct(x.s.pAct)}`,valSub:x.s.metas+" de 3 metas"}));
+  h+=`<div class="panel"><div class="panel-head"><div><h2>Ranking de coaches · ${monthLabel(mes)}</h2><p>Promedio de avance en cartera, rutina y socios activos (cada uno topado en su meta). 100% = cumple las 3.</p></div>
+    <span class="tag ${items.some(x=>x.s&&x.s.cumple)?"ok":""}">${items.filter(x=>x.s&&x.s.cumple).length} de ${rk.length} cumplen</span></div>${rankList(rk)}${LEGEND}</div>`;
+  h+=`<div class="panel"><h2>Detalle</h2><div class="scroll" style="margin-top:10px"><table><thead><tr>${cartHead(showSuc)}</tr></thead><tbody>${items.map(x=>cartRow(x,k,showSuc)).join("")}</tbody></table></div></div>`;
+  return h;
+}
+function viewBonosCartera(){
+  const area=state.area, k=cfgOf(area).kpi, mes=capMesFor(area), items=cartItems(area,mes), showSuc=state.f.suc==="all";
+  let h=filterBar({fecha:false})+`<div class="panel">${capMesPicker(area)}</div>`;
+  h+=`<div class="panel"><h2>Reporte de bonos · Coach de Fuerza · ${monthLabel(mes)}</h2>
+    <p class="muted" style="margin:4px 0 10px">Son dos bonos distintos. <b>Bono de cartera</b>: ${k.cartera}+ socios en cartera, ${pct(k.rutina)}+ con rutina en TG (sobre ${k.cartera}) y ${pct(k.activos)}+ de socios activos en el mes. <b>Bono de testimonios</b>: ${k.testimonios}+ testimonios de cambio de vida (se mide sobre ${k.testimonios}).</p>
+    <div class="scroll"><table><thead><tr>${cartHead(showSuc)}</tr></thead><tbody>${items.map(x=>cartRow(x,k,showSuc)).join("")}</tbody></table></div></div>`;
+  return h;
+}
+function viewPizarraCartera(){
+  const area=state.area, k=cfgOf(area).kpi, ms=capMeses(area), roster=rosterSel(), showSuc=state.f.suc==="all";
+  let h=filterBar({fecha:false});
+  if(!ms.length)return h+`<div class="panel empty-state"><h2>Sin capturas</h2><p>La pizarra de Coach de Fuerza se llena con la captura mensual de Equipo y metas.</p><div class="row"><button class="btn" data-go="equipo">Capturar</button></div></div>`;
+  const cell=(r,m)=>{const o=cartScore(capOf(area,m)[r.id],k);if(!o||!o.n)return `<td class="cell empty"></td>`;
+    return `<td class="cell ${grade(o.score)}" title="cartera ${o.car==null?"–":o.car} · rutina ${pct(o.pRut)} · activos ${pct(o.pAct)} · testimonios ${o.tes==null?"–":o.tes}">${o.metas}/3${o.okTes?" · T":""}</td>`};
+  h+=`<div class="panel"><div class="scroll"><table class="pz"><thead><tr><th class="name">Coach</th>${ms.map(m=>`<th class="wk">${monthLabel(m)}</th>`).join("")}</tr></thead><tbody>`+
+    roster.map(r=>`<tr><td class="name">${esc(r.nombre)}${showSuc?` <span class="muted">· ${esc(sucCorto(r.sucursal))}</span>`:""}</td>${ms.map(m=>cell(r,m)).join("")}</tr>`).join("")+
+    `</tbody></table></div><div class="legend"><span style="--c:var(--ok-bg)">Cumple las 3 metas</span><span style="--c:var(--warn-bg)">90–99% de avance</span><span style="--c:var(--bad-bg)">Menos de 90%</span></div>
+    <p class="muted" style="font-size:.85rem;margin:10px 0 0">Cada celda dice cuántas de las 3 metas (cartera, rutina, activos) cumplió; “T” = cumplió testimonios.</p></div>`;
+  return h;
+}
+function viewColaboradorCartera(){
+  const area=state.area, k=cfgOf(area).kpi, roster=rosterSel();
+  let h=filterBar({fecha:false});
+  if(!roster.length)return h+`<div class="panel empty-state"><h2>Sin coaches</h2></div>`;
+  if(!state.colab||!roster.some(x=>x.id===state.colab))state.colab=roster[0].id;
+  const r=roster.find(x=>x.id===state.colab), ms=capMeses(area).slice().reverse();
+  h+=`<div class="panel"><div class="colhead"><div><label class="f" style="margin-bottom:8px">Coach<select id="colSel">${roster.map(x=>`<option value="${esc(x.id)}" ${x===r?"selected":""}>${esc(x.nombre)}${state.f.suc==="all"?" · "+sucCorto(x.sucursal):""}</option>`).join("")}</select></label>
+    <h2>${esc(r.nombre)}</h2><div class="meta-line">Coach de Fuerza · ${esc(sucNombre(r.sucursal))} · ${TURNOS[r.turno]||esc(r.turno)}</div></div></div></div>`;
+  if(!ms.length)return h+`<div class="panel empty-state"><h2>Sin capturas</h2></div>`;
+  h+=`<div class="panel"><h2>Mes por mes</h2><div class="scroll" style="margin-top:10px"><table><thead><tr>${cartHead(false,"Mes")}</tr></thead><tbody>`+
+    ms.map(m=>cartRow({r,s:cartScore(capOf(area,m)[r.id],k)},k,false,monthLabel(m))).join("")+`</tbody></table></div></div>`;
+  return h;
+}
+function capturaPanel(area,cfg){
+  const mes=capMesFor(area), dirty=state.capDirty&&state.capDirty.area===area&&state.capDirty.mes===mes?state.capDirty.datos:null;
+  const datos=dirty||capOf(area,mes), k=cfg.kpi;
+  const inp=(id,campo,ph)=>{const v=(datos[id]||{})[campo];return `<input class="inl" id="cap_${id}_${campo}" type="number" min="0" step="1" data-cap="${esc(id)}|${campo}" value="${v==null?"":v}" placeholder="${ph}">`};
+  return `<div class="panel"><div class="panel-head"><div><h2>Captura del mes</h2><p>Se llena a mano cada mes, con datos de TrainingGym.</p></div>${capMesPicker(area)}</div>
+    <div class="scroll"><table><thead><tr><th>Coach</th><th>Sucursal</th><th class="num">Socios en cartera</th><th class="num">Socios con rutina</th><th class="num">% socios activos último mes</th><th class="num">Testimonios de cambio de vida</th></tr></thead><tbody>`+
+    cfg.roster.map(r=>`<tr><td>${esc(r.nombre)}</td><td>${esc(sucCorto(r.sucursal))}</td><td class="num">${inp(r.id,"cartera",k.cartera)}</td><td class="num">${inp(r.id,"rutina","–")}</td><td class="num">${inp(r.id,"activos","%")} %</td><td class="num">${inp(r.id,"testimonios","–")}</td></tr>`).join("")+
+    `</tbody></table></div><div class="row" style="margin-top:12px"><button class="btn" id="saveCap" ${dirty?"":"disabled"}>Guardar captura de ${monthLabel(mes)}</button>${dirty?`<button class="btn ghost" id="undoCap">Descartar</button>`:""}</div>
+    <h3 style="margin-top:18px">Metas</h3><div class="row" style="margin-top:6px">
+      <label class="f">Socios en cartera<input class="inl" id="kpi_cartera" type="number" min="0" data-kpi="cartera" value="${k.cartera}"></label>
+      <label class="f">% con rutina (sobre la cartera meta)<span><input class="inl" id="kpi_rutina" type="number" min="0" max="100" data-kpi="rutina" value="${Math.round(k.rutina*100)}"> %</span></label>
+      <label class="f">% socios activos<span><input class="inl" id="kpi_activos" type="number" min="0" max="100" data-kpi="activos" value="${Math.round(k.activos*100)}"> %</span></label>
+      <label class="f">Testimonios al mes<input class="inl" id="kpi_testimonios" type="number" min="0" data-kpi="testimonios" value="${k.testimonios}"></label></div>
+    <p class="muted small" style="margin:6px 0 0">Los cambios de metas se guardan con “Guardar cambios” al final de la página.</p></div>`;
+}
+// áreas que se miden contra los accesos diarios al club (Mobility, Full Evolution, Core)
+// meta del día = accesos × % que va a fuerza en esa sucursal × meta del área
+function esAccesos(area){const a=areaById(area);return !!a&&cfgOf(area).modo==="accesos"}
+function diaDias(){const out={};for(const d of Object.values(state.diario))for(const [k,v] of Object.entries(d.dias||{}))out[k]=v;return out}
+function diaTiene(v,area){return v&&v[area]&&Object.values(v[area]).some(x=>x!=null&&x!=="")}
+async function saveDiario(mes,dias){
+  const doc={mes,dias,actualizado:new Date().toISOString()};
+  state.diario[mes]=doc;
+  if(state.db){await state.db.doc("diario/"+mes).set(doc)}else{lsSet(LS_D,state.diario)}
+  render();
+}
+// suma del periodo filtrado; por día y sucursal solo cuenta si hay accesos y registro del área
+function accStats(area,opts){
+  opts=opts||{};
+  const cfg=cfgOf(area), pf=state.global.pctFuerza, rg=opts.range!==undefined?opts.range:curRange();
+  const sucs=cfg.sucs.filter(s=>(opts.suc||state.f.suc)==="all"||s===(opts.suc||state.f.suc));
+  if(state.f.rango!=="acum"&&opts.range===undefined&&!rg)return{acc:0,base:0,meta:0,real:0,dias:[]};
+  const o={acc:0,base:0,meta:0,real:0,dias:[]};
+  for(const [d,v] of Object.entries(diaDias()).sort()){
+    if(rg&&(d<rg.from||d>rg.to))continue;
+    for(const s of sucs){
+      const acc=v.acc&&v.acc[s], real=v[area]&&v[area][s];
+      if(acc==null||acc===""||real==null||real==="")continue;
+      const base=+acc*(pf[s]||0), meta=base*cfg.metaAcc;
+      o.acc+=+acc;o.base+=base;o.meta+=meta;o.real+=+real;o.dias.push({d,s,acc:+acc,base,meta,real:+real});
+    }
+  }
+  o.pct=o.base>0?o.real/o.base:null; o.c=o.meta>0?o.real/o.meta:null;
+  return o;
+}
+function accTabla(st,area,showSuc){
+  const cfg=cfgOf(area);
+  return `<div class="scroll"><table><thead><tr><th>Fecha</th>${showSuc?"<th>Sucursal</th>":""}<th class="num">Accesos al club</th><th class="num">Van a fuerza</th><th class="num">Meta (${pct(cfg.metaAcc)})</th><th class="num">${esc(areaNombre(area))}</th><th class="num">% de los de fuerza</th><th class="num">Cumplimiento</th></tr></thead><tbody>`+
+    st.dias.slice().reverse().map(x=>{const c=x.meta>0?x.real/x.meta:null;return `<tr><td>${valLabel("dia",x.d)}</td>${showSuc?`<td>${esc(sucCorto(x.s))}</td>`:""}<td class="num">${fmtN(x.acc)}</td><td class="num">${fmtN(x.base)}</td><td class="num">${fmtN(x.meta)}</td><td class="num">${fmtN(x.real)}</td><td class="num">${pct(x.base>0?x.real/x.base:null,1)}</td><td class="num"><span class="tag ${grade(c)}">${pct(c)}</span></td></tr>`}).join("")+`</tbody></table></div>`;
+}
+function viewPizarraAccesos(){
+  const area=state.area, cfg=cfgOf(area), st=accStats(area);
+  let h=filterBar({turno:false});
+  if(!st.dias.length)return h+`<div class="panel empty-state"><h2>Sin registros en este periodo</h2><div class="row"><button class="btn" data-go="equipo">Capturar</button></div></div>`;
+  return h+`<div class="panel"><h2>Registro por día · ${esc(areaNombre(area))}</h2><div style="margin-top:10px">${accTabla(st,area,cfg.sucs.length>1&&state.f.suc==="all")}</div></div>`;
+}
+function viewTableroAccesos(){
+  const area=state.area, cfg=cfgOf(area), pf=state.global.pctFuerza, n=areaNombre(area);
+  let h=filterBar({turno:false});
+  const st=accStats(area), showSuc=cfg.sucs.length>1&&state.f.suc==="all";
+  const regla=`<p class="muted small" style="margin:0">Meta: que el ${pct(cfg.metaAcc)} de los socios que van a fuerza pase por ${esc(n)}. Van a fuerza: ${cfg.sucs.map(s=>sucNombre(s)+" "+pct(pf[s])).join(" · ")} de los accesos del día.</p>`;
+  if(!st.dias.length)return h+`<div class="panel empty-state"><h2>Sin registros de ${esc(n)} en este periodo</h2><p>Se llena por día en Captura y metas: accesos al club y socios que pasaron por ${esc(n)}.</p>${regla}<div class="row"><button class="btn" data-go="equipo">Capturar</button></div></div>`;
+  const g=grade(st.c);
+  h+=`<div class="kpis">`+kpi("Accesos al club",fmtN(st.acc),"días con registro: "+new Set(st.dias.map(x=>x.d)).size)+
+    kpi("Van a fuerza",fmtN(st.base),"según el % de cada sucursal")+kpi("Meta",fmtN(st.meta),pct(cfg.metaAcc)+" de los que van a fuerza")+
+    kpi("Pasaron por "+esc(n),fmtN(st.real),pct(st.pct,1)+" de los que van a fuerza",g)+kpi("Cumplimiento",pct(st.c),"real ÷ meta",g)+`</div>`;
+  if(showSuc)h+=`<div class="panel"><p class="section-label">Por sucursal</p><div class="bgrid">`+cfg.sucs.map(s=>{const x=accStats(area,{suc:s}),gg=grade(x.c);
+    return `<button class="bcard" data-fsuc="${s}"><span class="bl">${esc(sucNombre(s))}</span><span class="bs">van a fuerza ${pct(pf[s])} de los accesos</span>${x.dias.length?`<b class="t-${gg}">${pct(x.pct,1)}</b><span class="bs">de los de fuerza · meta ${pct(cfg.metaAcc)}</span>${meter(x.pct,cfg.metaAcc,gg)}<span class="tag ${gg}">${pct(x.c)} de la meta</span>`:`<b class="t-empty">–</b><span class="bs">Sin registros</span>`}</button>`}).join("")+`</div></div>`;
+  // gráfica por día (si hay una sola sucursal) o por día sumando sucursales
+  const byD={};for(const x of st.dias){const t=byD[x.d]||(byD[x.d]={base:0,meta:0,real:0});t.base+=x.base;t.meta+=x.meta;t.real+=x.real}
+  const series=Object.keys(byD).sort().map(d=>{const t=byD[d];return{k:d,label:DIAS[parseISO(d).getDay()]+" "+parseISO(d).getDate(),m:{at:t.real,cap:t.base},o:t.base>0?t.real/t.base:null,c:t.meta>0?t.real/t.meta:null}});
+  h+=`<div class="panel"><div class="panel-head"><div><h2>% de los que van a fuerza, por día</h2>${regla}</div></div>${vchart(series,cfg.metaAcc)}</div>`;
+  h+=`<div class="panel"><h2>Registro por día</h2><div style="margin-top:10px">${accTabla(st,area,showSuc)}</div></div>`;
+  return h;
+}
+function diaMesFor(){return state.capMes||(state.f.rango==="mes"&&state.f.valor.mes)||iso(new Date()).slice(0,7)}
+function capturaAccesos(area,cfg){
+  const mes=diaMesFor(), dirty=state.diaDirty&&state.diaDirty.mes===mes?state.diaDirty.dias:null;
+  const dias=dirty||((state.diario[mes]||{}).dias)||{}, sucs=cfg.sucs.filter(s=>state.f.suc==="all"||s===state.f.suc);
+  const [y,mo]=mes.split("-").map(Number), nd=new Date(y,mo,0).getDate(), hoy=iso(new Date());
+  const ms=[];for(let i=0;i<8;i++){const d=new Date(y,mo-1+1-i,1);ms.push(iso(d).slice(0,7))}
+  const cur=iso(new Date()).slice(0,7);if(!ms.includes(cur))ms.unshift(cur);
+  const inp=(d,campo,s)=>{const v=((dias[d]||{})[campo]||{})[s];return `<input class="inl" style="width:78px" id="dia_${d}_${campo}_${s}" type="number" min="0" step="1" data-dia="${d}|${campo}|${s}" value="${v==null?"":v}" placeholder="–">`};
+  let rows="";
+  for(let i=1;i<=nd;i++){const d=mes+"-"+String(i).padStart(2,"0");if(d>hoy)break;
+    rows+=`<tr><td>${valLabel("dia",d)}</td>`+sucs.map(s=>`<td class="num">${inp(d,"acc",s)}</td><td class="num">${inp(d,area,s)}</td>`).join("")+`</tr>`}
+  return `<div class="panel"><div class="panel-head"><div><h2>Captura por día</h2><p>Accesos al club y socios que pasaron por ${esc(areaNombre(area))}. Los accesos se comparten con las demás áreas que se miden igual.</p></div>
+    <label class="f">Mes<select id="capMesSel">${[...new Set(ms)].sort().reverse().map(k=>`<option value="${k}" ${k===mes?"selected":""}>${monthLabel(k)}</option>`).join("")}</select></label></div>
+    <div class="scroll"><table><thead><tr><th>Día</th>${sucs.map(s=>`<th class="num">Accesos ${esc(sucCorto(s))}</th><th class="num">${esc(areaNombre(area))} ${esc(sucCorto(s))}</th>`).join("")}</tr></thead><tbody>${rows||`<tr><td class="muted" colspan="${1+sucs.length*2}">Este mes todavía no empieza.</td></tr>`}</tbody></table></div>
+    <div class="row" style="margin-top:12px"><button class="btn" id="saveDia" ${dirty?"":"disabled"}>Guardar ${monthLabel(mes)}</button>${dirty?`<button class="btn ghost" id="undoDia">Descartar</button>`:""}</div></div>`;
+}
+function metasAccesos(area,cfg){
+  const pf=state.global.pctFuerza;
+  return `<div class="panel"><h2>Metas</h2><div class="row" style="margin-top:8px;align-items:flex-end">
+    <label class="f">Meta de ${esc(areaNombre(area))}<span><input class="inl" id="metaAcc" type="number" min="0" max="100" data-metaacc="1" value="${Math.round(cfg.metaAcc*100)}"> % de los que van a fuerza</span></label>
+    <span class="muted small">Aplica en: ${cfg.sucs.map(sucNombre).join(", ")}.</span></div>
+    <h3 style="margin-top:16px">% de los accesos que van a fuerza</h3><p class="muted" style="margin:2px 0 8px">Es el mismo para Mobility, Full Evolution y Core; se guarda al salir del campo.</p>
+    <div class="row">${SUCURSALES.map(s=>`<label class="f">${esc(s.nombre)}<span><input class="inl" id="pf_${s.id}" type="number" min="0" max="100" data-pf="${s.id}" value="${Math.round((pf[s.id]||0)*100)}"> %</span></label>`).join("")}</div>
+    <p class="muted small" style="margin:10px 0 0">Los cambios de la meta del área se guardan con “Guardar cambios” al final de la página.</p></div>`;
+}
+// Tutoriales: meta de ingresos sin IVA por sucursal y mes; meta e ingreso se capturan a mano
+function money(v){return v==null||!isFinite(v)?"–":"$"+Math.round(v).toLocaleString("es-MX")}
+function ingItems(area,mes){
+  const cfg=cfgOf(area), d=capOf(area,mes);
+  return SUCURSALES.filter(s=>state.f.suc==="all"||s.id===state.f.suc).map(s=>{const x=d[s.id]||{};
+    const meta=x.meta!=null&&x.meta!==""?+x.meta:+cfg.metaIng, ing=x.ingreso!=null&&x.ingreso!==""?+x.ingreso:null;
+    return{s,meta,ing,c:ing!=null&&meta>0?ing/meta:null}});
+}
+function ingTot(items){const con=items.filter(x=>x.ing!=null),ing=con.reduce((a,x)=>a+x.ing,0),meta=con.reduce((a,x)=>a+x.meta,0);return{con,ing,meta,c:meta>0?ing/meta:null}}
+function viewTableroIngresos(){
+  const area=state.area, cfg=cfgOf(area), mes=capMesFor(area), items=ingItems(area,mes), t=ingTot(items), g=grade(t.c);
+  let h=filterBar({fecha:false,turno:false})+`<div class="panel"><div class="row" style="justify-content:space-between;align-items:flex-end">${capMesPicker(area)}
+    <span class="muted small">Ingresos sin IVA contra la meta del mes (por defecto ${money(cfg.metaIng)} por sucursal). Se capturan a mano en Captura y metas.</span></div></div>`;
+  if(!t.con.length)return h+`<div class="panel empty-state"><h2>Sin ingresos capturados en ${monthLabel(mes)}</h2><p>Captura el ingreso sin IVA de cada sucursal y, si cambia, su meta.</p><div class="row"><button class="btn" data-go="equipo">Capturar</button></div></div>`;
+  h+=`<div class="kpis">`+kpi("Ingresos sin IVA",money(t.ing),monthLabel(mes))+kpi("Meta",money(t.meta),t.con.length+" sucursal"+(t.con.length===1?"":"es")+" con captura")+
+    kpi("Cumplimiento",pct(t.c),"ingresos ÷ meta",g)+kpi(t.ing>=t.meta?"Arriba de la meta":"Faltan",money(Math.abs(t.meta-t.ing)),t.ing>=t.meta?"":"para llegar a la meta")+`</div>`;
+  h+=`<div class="panel"><p class="section-label">Por sucursal</p><div class="bgrid">`+items.map(x=>{const gg=grade(x.c);
+    return `<button class="bcard" data-fsuc="${x.s.id}"><span class="bl">${esc(x.s.nombre)}</span><span class="bs">meta ${money(x.meta)}</span>${x.ing!=null?`<b class="t-${gg}">${money(x.ing)}</b>${meter(x.c,1,gg)}<span class="tag ${gg}">${pct(x.c)} de la meta</span>`:`<b class="t-empty">–</b><span class="bs">Sin captura</span>`}</button>`}).join("")+`</div></div>`;
+  const ms=capMeses(area).slice().reverse();
+  if(ms.length>1)h+=`<div class="panel"><h2>Mes por mes</h2><div class="scroll" style="margin-top:10px"><table><thead><tr><th>Mes</th><th class="num">Ingresos sin IVA</th><th class="num">Meta</th><th class="num">Cumplimiento</th></tr></thead><tbody>`+
+    ms.map(m=>{const x=ingTot(ingItems(area,m));return `<tr><td>${monthLabel(m)}</td><td class="num">${money(x.ing)}</td><td class="num">${money(x.meta)}</td><td class="num"><span class="tag ${grade(x.c)}">${pct(x.c)}</span></td></tr>`}).join("")+`</tbody></table></div></div>`;
+  return h;
+}
+function capturaIngresos(area,cfg){
+  const mes=capMesFor(area), dirty=state.capDirty&&state.capDirty.area===area&&state.capDirty.mes===mes?state.capDirty.datos:null, datos=dirty||capOf(area,mes);
+  const inp=(id,campo,ph)=>{const v=(datos[id]||{})[campo];return `<input class="inl" style="width:120px" id="cap_${id}_${campo}" type="number" min="0" step="1" data-cap="${id}|${campo}" value="${v==null?"":v}" placeholder="${ph}">`};
+  return `<div class="panel"><div class="panel-head"><div><h2>Captura del mes</h2><p>Ingresos sin IVA de Tutoriales por sucursal. La meta vacía usa la de por defecto.</p></div>${capMesPicker(area)}</div>
+    <div class="scroll"><table style="max-width:560px"><thead><tr><th>Sucursal</th><th class="num">Meta del mes ($)</th><th class="num">Ingreso sin IVA ($)</th></tr></thead><tbody>`+
+    SUCURSALES.map(s=>`<tr><td>${esc(s.nombre)}</td><td class="num">${inp(s.id,"meta",cfg.metaIng)}</td><td class="num">${inp(s.id,"ingreso","–")}</td></tr>`).join("")+
+    `</tbody></table></div><div class="row" style="margin-top:12px"><button class="btn" id="saveCap" ${dirty?"":"disabled"}>Guardar ${monthLabel(mes)}</button>${dirty?`<button class="btn ghost" id="undoCap">Descartar</button>`:""}</div>
+    <div class="row" style="margin-top:14px;align-items:flex-end"><label class="f">Meta por defecto por sucursal ($ sin IVA)<input class="inl" style="width:120px" id="metaIng" type="number" min="0" step="100" data-metaing="1" value="${cfg.metaIng}"></label>
+    <span class="muted small">Se guarda con “Guardar cambios” al final de la página.</span></div></div>`;
+}
+async function saveGlobal(g){
+  state.global=fixGlobal(g);
+  if(state.db){await state.db.doc("config/deportes").set(state.global)}
+  else{lsSet(LS_G,state.global)}
+  render();
+}
+
+function attachDb(db,label){
+  state.db=db; setStatus(label);
+  const err=e=>setStatus(/does not exist|42P01|relation/i.test(e.message||"")?"Falta crear la tabla en Supabase (corre schema.sql)":"Sin conexión a la base: "+e.message);
+  db.collection("periodos").onSnapshot(s=>{state.periods=s.docs.map(d=>Object.assign({id:d.id},d.data()));render()},err);
+  db.collection("diario").onSnapshot(s=>{state.diario={};for(const d of s.docs)state.diario[d.id]=clone(d.data());render()},err);
+  db.collection("capturas").onSnapshot(s=>{state.capturas={};for(const d of s.docs)state.capturas[d.id]=clone(d.data());render()},err);
+  // config/equipo es Recovery (histórico); config/<área> para las demás
+  db.collection("config").onSnapshot(s=>{
+    for(const d of s.docs){
+      if(d.id==="deportes"){state.global=fixGlobal(clone(d.data()));continue}
+      const a=d.id==="equipo"?"recovery":d.id;if(areaById(a))state.configs[a]=fixConfig(clone(d.data()),a)}
+    render();
+  },err);
+}
+// Supabase con la misma forma que la base del artefacto: tabla deportes_docs (col, id, data)
+function supaDb(url,key){
+  const sb=window.supabase.createClient(url,key), T="deportes_docs", subs={}, cache={};
+  const emit=col=>{const m=cache[col]||new Map(), snap={docs:[...m].map(([id,d])=>({id,data:()=>d}))};(subs[col]||[]).forEach(x=>x.cb(snap))};
+  const load=async col=>{
+    const out=new Map();
+    for(let from=0;;from+=1000){const {data,error}=await sb.from(T).select("id,data").eq("col",col).range(from,from+999);if(error)throw error;data.forEach(r=>out.set(r.id,r.data));if(data.length<1000)break}
+    cache[col]=out;emit(col);
+  };
+  sb.channel("deportes_docs").on("postgres_changes",{event:"*",schema:"public",table:T},p=>{
+    const r=p.eventType==="DELETE"?p.old:p.new, col=r&&r.col;if(!col||!cache[col])return;
+    if(p.eventType==="DELETE")cache[col].delete(r.id);else cache[col].set(r.id,r.data);emit(col);
+  }).subscribe();
+  // respaldo por si el tiempo real se corta
+  setInterval(()=>{for(const col of Object.keys(subs))load(col).catch(()=>{})},90000);
+  return{
+    collection:col=>({onSnapshot:(cb,err)=>{const x={cb};(subs[col]=subs[col]||[]).push(x);load(col).catch(e=>err&&err({message:e.message||String(e)}));return()=>{subs[col]=subs[col].filter(y=>y!==x)}}}),
+    doc:path=>{const [col,id]=path.split("/");return{
+      set:async d=>{const {error}=await sb.from(T).upsert({col,id,data:d,updated_at:new Date().toISOString()});if(error)throw error;(cache[col]=cache[col]||new Map()).set(id,d);emit(col)},
+      delete:async()=>{const {error}=await sb.from(T).delete().eq("col",col).eq("id",id);if(error)throw error;if(cache[col]){cache[col].delete(id);emit(col)}}}}
+  };
+}
+function connect(){
+  if(window.claude&&window.claude.use){
+    window.claude.use("db").then(db=>{if(db)attachDb(db,"Sincronizado con el equipo")}).catch(()=>{});
+    window.claude.use("downloads").then(d=>{state.downloads=d;render()}).catch(()=>{});
+    window.claude.use("sample").then(s=>{state.sample=s;render()}).catch(()=>{});
+    return;
+  }
+  // fuera de Claude (GitHub Pages): el Excel se descarga directo y los datos van a Supabase
+  state.downloads={save:async({filename,data})=>{const a=document.createElement("a");a.href=URL.createObjectURL(data);a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}};
+  const sc=window.DEPORTES_SUPABASE;
+  if(!sc||!sc.url||!sc.key){render();return}
+  setStatus("Conectando…");
+  const s=document.createElement("script");
+  s.src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js";
+  s.onload=()=>{try{attachDb(supaDb(sc.url,sc.key),"Sincronizado con el equipo")}catch(e){setStatus("No se pudo conectar a la base: "+e.message)}};
+  s.onerror=()=>setStatus("No se pudo cargar la conexión a la base; revisa tu internet");
+  document.head.appendChild(s);
+}
+
+/* ---------- lectura del export ---------- */
+function mapColumns(headerRow){
+  const map={}; const used=new Set();
+  const cells=headerRow.map(norm);
+  for(const pass of ["exact","includes"]){
+    for(const f of Object.keys(SYN)){
+      if(map[f]!=null)continue;
+      for(let j=0;j<cells.length;j++){
+        const h=cells[j]; if(!h||used.has(j))continue;
+        if((f==="completadas"||f==="target")&&/[\/%]/.test(h))continue;
+        if(f==="sucursal"&&/^id/.test(h))continue;
+        const hit=RX_FIELD[f]?RX_FIELD[f].test(h):SYN[f].some(s=>pass==="exact"?h===s:h.includes(s));
+        if(hit){map[f]=j;used.add(j);break}
+      }
+    }
+  }
+  return map;
+}
+function detectHeader(aoa){
+  let best=null;
+  for(let i=0;i<Math.min(25,aoa.length);i++){
+    const m=mapColumns(aoa[i]||[]); const score=Object.keys(m).length;
+    if(m.tecnico!=null&&m.completadas!=null&&(!best||score>best.score))best={i,map:m,score};
+  }
+  return best;
+}
+function parseFilters(text){
+  const out={texto:text};
+  const a=text.match(/despu[eé]s del (\d{1,2})\/(\d{1,2})\/(\d{4})/i);
+  const b=text.match(/antes del (\d{1,2})\/(\d{1,2})\/(\d{4})/i);
+  if(a)out.inicio=iso(new Date(+a[3],+a[2]-1,+a[1]));
+  if(b)out.fin=iso(addDays(new Date(+b[3],+b[2]-1,+b[1]),-1));
+  const c=text.match(/nombre es ([^\n]+)/i); if(c)out.centro=c[1].trim();
+  const r=text.match(/Rol es ([^\n]+)/i); if(r)out.rol=r[1].trim();
+  return out;
+}
+function extractRows(aoa,hi,map){
+  const rows=[];
+  for(let i=hi+1;i<aoa.length;i++){
+    const r=aoa[i]||[]; const t=r[map.tecnico];
+    if(t==null||tidy(t)==="")continue;
+    if(/^filtros/i.test(String(t)))continue;
+    const row={t:tidy(t),c:num(r[map.completadas])};
+    if(map.target!=null)row.g=num(r[map.target]);
+    if(map.agendados!=null)row.a=num(r[map.agendados]);
+    if(map.tarea!=null&&r[map.tarea]!=null)row.ta=tidy(r[map.tarea]);
+    if(map.fecha!=null){const d=toDate(r[map.fecha]);if(d)row.f=iso(d)}
+    if(map.inicio!=null&&map.fin!=null){
+      const a=toDate(r[map.inicio]), b=toDate(r[map.fin]);
+      if(a&&b){let pi=iso(a),pf=iso(b);
+        // "del 1 sep al 1 oct" como en los filtros de TG: el fin es exclusivo
+        if(pi.slice(8)==="01"&&pf.slice(8)==="01"&&pf>pi)pf=iso(addDays(parseISO(pf),-1));
+        if(pf>=pi){row.pi=pi;row.pf=pf}}
+    }
+    if(map.sucursal!=null){const s=detectSuc(r[map.sucursal]);if(s)row.su=s}
+    if(map.sala!=null){row.sa=tidy(r[map.sala]);
+      if(map.hora!=null){const h=horaTxt(r[map.hora]);if(h)row.h=h}
+      if(map.estado!=null)row.v=/valid/.test(norm(r[map.estado]))?1:0}
+    rows.push(row);
+  }
+  return rows;
+}
+async function readFile(file){
+  const buf=await file.arrayBuffer();
+  const wb=XLSX.read(buf,{type:"array",cellDates:true});
+  let filterText="", found=null, firstAoa=null, sheetName=null;
+  for(const name of wb.SheetNames){
+    const aoa=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:true,defval:null});
+    for(const r of aoa)for(const c of r)if(typeof c==="string"&&/filtros aplicados/i.test(c))filterText+=c+"\n";
+    if(!firstAoa&&aoa.some(r=>r.some(c=>c!=null)))firstAoa=aoa, sheetName=name;
+    if(!found){const h=detectHeader(aoa);if(h){found={aoa,h,name}}}
+  }
+  const p={fileName:file.name, area:state.area==="resumen"?"deportes":state.area, filtros:parseFilters(filterText), assign:{}};
+  const auto=detectSuc(p.filtros.centro||"")||detectSuc(file.name);
+  p.sucursal=auto||(state.f.suc!=="all"?state.f.suc:"NAC"); p.sucAuto=!!auto;
+  if(!found){
+    p.aoa=firstAoa; p.sheet=sheetName;
+    const cells=firstAoa?firstAoa.reduce((n,r)=>n+r.filter(c=>c!=null).length,0):0;
+    p.error=cells<4
+      ? "El archivo no trae datos, solo el aviso de conexión a Power BI. En TrainingGym exporta con la opción de datos (Datos resumidos, .xlsx o .csv), no la vista conectada."
+      : "No encontré las columnas de técnico y completadas. Puedes intentar ordenarlo con IA.";
+    return p;
+  }
+  return finishPending(p,found.aoa,found.h.i,found.h.map,found.name);
+}
+function finishPending(p,aoa,hi,map,sheet){
+  p.sheet=sheet; p.map=map; p.headers=(aoa[hi]||[]).map(tidy);
+  p.rows=extractRows(aoa,hi,map);
+  p.hasFecha=p.rows.some(r=>r.f);
+  p.hasRango=p.rows.some(r=>!r.f&&r.pi);
+  p.sinFecha=p.rows.filter(r=>!r.f&&!r.pi&&norm(r.t)!=="total").length;
+  p.rowSuc=p.rows.some(r=>r.su);
+  // reporte de clases (trae Sala): se reparte por sala a los estudios, venga de donde venga
+  p.clases=p.rows.some(r=>r.sa!=null); if(p.clases)p.area="deportes";
+  if(!p.rows.length){p.error="Encontré los encabezados pero ninguna fila con datos.";return p}
+  delete p.error;
+  if(p.hasFecha){
+    const fs=p.rows.filter(r=>r.f).map(r=>r.f).sort();
+    p.inicio=fs[0]; p.fin=fs[fs.length-1];
+  }else if(p.hasRango&&!p.filtros.inicio){
+    const is=p.rows.filter(r=>r.pi).map(r=>r.pi).sort(), fs=p.rows.filter(r=>r.pf).map(r=>r.pf).sort();
+    p.inicio=is[0]; p.fin=fs[fs.length-1];
+  }else{
+    p.inicio=p.filtros.inicio||iso(monday(new Date()));
+    p.fin=p.filtros.fin||iso(addDays(parseISO(p.inicio),6));
+  }
+  return p;
+}
+async function aiOrganize(){
+  const p=state.pending; if(!p||!p.aoa||!state.sample)return;
+  p.aiBusy=true; render();
+  const sampleRows=p.aoa.slice(0,30).map(r=>r.map(c=>c==null?null:String(c instanceof Date?iso(c):c).slice(0,60)));
+  const prompt="Eres un parser de exportaciones de TrainingGym (gimnasio, área de deportes: "+areaNombre(p.area)+"). "+
+   "Te doy las primeras filas de una hoja como matriz JSON (índices desde 0). Encuentra la fila de encabezados y el índice de columna de cada campo. "+
+   "Campos: tecnico (nombre del colaborador, instructor o recurso), tarea (servicio/actividad/clase), completadas (sesiones completadas, atendidos o asistentes), target (objetivo/capacidad/aforo), inicio (fecha de inicio del periodo), fin (fecha de fin del periodo), fecha (fecha de un solo día), agendados, sucursal (nombre del club o centro, no su id). "+
+   "Usa null si un campo no existe. No inventes columnas. Responde SOLO JSON con la forma {\"headerRow\":n,\"tecnico\":n,\"tarea\":n|null,\"completadas\":n,\"target\":n|null,\"inicio\":n|null,\"fin\":n|null,\"fecha\":n|null,\"agendados\":n|null,\"sucursal\":n|null}.\n\n"+
+   JSON.stringify(sampleRows);
+  try{
+    const r=await state.sample.json(prompt,{modelTier:"quick"});
+    if(r&&r.tecnico!=null&&r.completadas!=null&&r.headerRow!=null){
+      const map={};["tecnico","tarea","completadas","target","inicio","fin","fecha","agendados","sucursal"].forEach(k=>{if(r[k]!=null)map[k]=r[k]});
+      state.pending=finishPending(p,p.aoa,r.headerRow,map,p.sheet); state.pending.aiUsed=true;
+    }else{p.error="La IA tampoco encontró técnico y completadas en este archivo."}
+  }catch(e){p.error="No se pudo ordenar con IA: "+(e.message||e.code)}
+  if(state.pending)state.pending.aiBusy=false; render();
+}
+
+/* ---------- datos: filas planas y filtros ---------- */
+let _facts={ref:null,val:[]};
+function facts(){
+  if(_facts.ref===state.periods)return _facts.val;
+  const out=[];
+  for(const p of state.periods){
+    const psu=p.sucursal||"NAC", area=p.area||"recovery";
+    for(const r of p.rows||[]){
+      const su=r.su||psu;
+      if(r.f){const w=iso(monday(parseISO(r.f)));out.push({r,area,su,f:r.f,ini:w,fin:iso(addDays(parseISO(w),6))})}
+      else if(r.pi&&r.pf)out.push({r,area,su,f:null,ini:r.pi,fin:r.pf});
+      else out.push({r,area,su,f:null,ini:p.inicio,fin:p.fin});
+    }
+  }
+  _facts={ref:state.periods,val:out};
+  return out;
+}
+function curAreaScope(){return state.area==="resumen"?"all":state.area}
+function sucOk(x,s){return s==="all"||x.su===s}
+function areaOk(x,a){return a==="all"||x.area===a}
+function rangeFor(rango,v){
+  if(rango==="acum"||!v)return null;
+  if(rango==="mes"){const [y,m]=v.split("-").map(Number);return{kind:"mes",from:v+"-01",to:iso(new Date(y,m,0))}}
+  if(rango==="semana")return{kind:"semana",from:v,to:iso(addDays(parseISO(v),6))};
+  if(rango==="fechas"){const [a,b]=v.split("|");return a&&b?{kind:"fechas",from:a<=b?a:b,to:a<=b?b:a}:null}
+  return{kind:"dia",from:v,to:v};
+}
+function inRange(x,rg){
+  if(!rg)return true;
+  if(x.f)return x.f>=rg.from&&x.f<=rg.to;
+  if(rg.kind==="dia")return false;
+  // sin fecha por fila: semanas se ubican por su inicio; periodos largos solo si caben completos
+  return spanDays(x.ini,x.fin)<=7?(x.ini>=rg.from&&x.ini<=rg.to):(x.ini>=rg.from&&x.fin<=rg.to);
+}
+function dateOptions(suc,area){
+  suc=suc||state.f.suc; area=area||curAreaScope();
+  const mes=new Set(),sem=new Set(),dia=new Set();
+  for(const x of facts()){
+    if(!sucOk(x,suc)||!areaOk(x,area))continue;
+    if(x.f){dia.add(x.f);sem.add(x.ini);mes.add(monthKey(x.f))}
+    else if(spanDays(x.ini,x.fin)<=7){sem.add(iso(monday(parseISO(x.ini))));mes.add(monthKey(x.ini))}
+    else if(monthKey(x.ini)===monthKey(x.fin))mes.add(monthKey(x.ini));
+  }
+  if(area==="all"||esAccesos(area))for(const [d,v] of Object.entries(diaDias())){if(area!=="all"&&!diaTiene(v,area))continue;dia.add(d);sem.add(iso(monday(parseISO(d))));mes.add(monthKey(d))}
+  return{mes:[...mes].sort(),semana:[...sem].sort(),dia:[...dia].sort()};
+}
+function syncFilter(){
+  const f=state.f;
+  if(f.suc!=="all"&&!sucById(f.suc))f.suc="all";
+  const ops=dateOptions();
+  for(const k of ["mes","semana","dia"]){const l=ops[k];if(!l.includes(f.valor[k]))f.valor[k]=l.length?l[l.length-1]:null}
+  if(!f.valor.fechas){const d=dateBounds();if(d.a)f.valor.fechas=d.a+"|"+d.b}
+}
+// primera y última fecha con datos en la vista actual
+function dateBounds(){let a=null,b=null;for(const x of facts()){if(!sucOk(x,state.f.suc)||!areaOk(x,curAreaScope()))continue;const i=x.f||x.ini,e=x.f||x.fin;if(!a||i<a)a=i;if(!b||e>b)b=e}
+  const sc=curAreaScope();if(sc==="all"||esAccesos(sc))for(const [d,v] of Object.entries(diaDias())){if(sc!=="all"&&!diaTiene(v,sc))continue;if(!a||d<a)a=d;if(!b||d>b)b=d}
+  return{a,b}}
+function curRange(){return rangeFor(state.f.rango,state.f.valor[state.f.rango])}
+function selRows(opts){
+  opts=opts||{};
+  const suc=opts.suc||state.f.suc, area=opts.area||curAreaScope();
+  const rg=opts.range!==undefined?opts.range:curRange();
+  if(state.f.rango!=="acum"&&opts.range===undefined&&!rg)return [];
+  const tu=opts.turno||state.f.turno, [hd,hh]=horaRango();
+  return facts().filter(x=>areaOk(x,area)&&sucOk(x,suc)&&inRange(x,rg)&&!(state.f.valid&&x.r.v===0)&&(tu==="all"||x.r.h==null||claseTurno(x.r)===tu)
+    &&(x.r.h==null||((!hd||x.r.h>=hd)&&(!hh||x.r.h<=hh))));
+}
+// turno de una clase por su hora: matutino 5:00–12:30, vespertino 17:00–21:00 (corte a las 15:00)
+function claseTurno(r){return r.h==null?null:r.h<"15:00"?"MAT":"VES"}
+function esEstudio(area){const a=areaById(area);return !!a&&a.grupo==="estudios"}
+function rosterSel(opts){
+  opts=opts||{};
+  const suc=opts.suc||state.f.suc, area=opts.area||state.area;
+  // en estudios el turno lo da la hora de cada clase, no el instructor
+  const turno=esEstudio(area)?"all":(opts.turno||state.f.turno);
+  return cfgOf(area).roster.filter(r=>(suc==="all"||r.sucursal===suc)&&(turno==="all"||r.turno===turno));
+}
+function valLabel(rango,v){
+  if(!v)return"";
+  if(rango==="mes")return monthLabel(v);
+  if(rango==="semana"){const fin=iso(addDays(parseISO(v),6));return fmtShort(v)+" – "+fmtShort(fin)+" "+fin.slice(0,4)}
+  if(rango==="fechas"){const [a,b]=v.split("|");return a&&b?fmtShort(a)+" – "+fmtShort(b)+" "+b.slice(0,4):""}
+  const d=parseISO(v);return DIAS[d.getDay()]+" "+fmtShort(v)+" "+v.slice(0,4);
+}
+function rangeLabel(){const f=state.f;return f.rango==="acum"?"Acumulado":valLabel(f.rango,f.valor[f.rango])||"Sin periodo"}
+function scopeLabel(){return state.f.suc==="all"?"Vivo 47":sucNombre(state.f.suc)}
+function turnoLabel(){return state.f.turno==="all"?"Todos los turnos":TURNOS[state.f.turno]}
+
+/* ---------- cálculo ---------- */
+// a qué área pertenece un nombre del export de Deportes: primero coincidencias completas, luego por primer nombre
+function routeName(raw,su){
+  const n=norm(raw);
+  if(!n||n==="total")return{kind:"skip"};
+  if(state.global.extra[n]==="__ignorar")return{kind:"skip",ignored:true};
+  // los estudios se llenan con el reporte de clases (por sala), no por nombre
+  for(const strict of [true,false])for(const a of AREAS.filter(a=>a.grupo==="areas")){
+    const r=resolveName(raw,cfgOf(a.id),su,strict);
+    if(r.kind==="col")return{kind:"col",area:a.id,id:r.id};
+  }
+  for(const a of AREAS)if(cfgOf(a.id).extra[n]==="__recurso")return{kind:"recurso",area:a.id};
+  if(RECURSO_RE.test(n))return{kind:"recurso",area:"recovery"};
+  return{kind:"otro"};
+}
+function resolveName(raw,cfg,su,strict){
+  const n=norm(raw);
+  if(!n||n==="total")return {kind:"skip"};
+  if(cfg.extra&&cfg.extra[n]){const v=cfg.extra[n];
+    if(v==="__recurso")return{kind:"recurso"}; if(v==="__ignorar")return{kind:"skip"};
+    if(cfg.roster.some(c=>c.id===v))return{kind:"col",id:v};}
+  const toks=n.split(" ");
+  const pool=cfg.roster.filter(c=>!su||(c.sucursal||"NAC")===su);
+  for(const c of pool){
+    for(const a of c.alias||[]){
+      const an=norm(a); if(!an)continue;
+      if(an===n)return{kind:"col",id:c.id};
+      const at=an.split(" ");
+      if(at.length>1&&at.every(t=>toks.includes(t)))return{kind:"col",id:c.id};
+      if(!strict&&at.length===1&&toks[0]===at[0])return{kind:"col",id:c.id};
+    }
+  }
+  if(RECURSO_RE.test(n))return{kind:"recurso"};
+  return{kind:"otro"};
+}
+// cupo de una clase: el de su sala; las de baile usan el cupo de Baile en esa sucursal si está capturado (ej. Baile en Aura = 25)
+function cupoClase(r,su,cfg){const b=isBaile(r.ta)?+(cfgOf("baile").cupos[su]||0):0;return b||+(cfg.cupos[su]||0)}
+// semáforo de asistentes por clase: [amarillo desde, verde desde]; menos es rojo
+const SEM_DEF=[10,15], SEM_ESP={"GOU|ft":[8,12],"GOU|neoride":[9,14]};
+function semUmbral(area,su){const c=cfgOf(area).semaforo||{};return c[su]||SEM_ESP[su+"|"+area]||SEM_DEF}
+function semArea(r){return salaArea(r.sa)||state.area}
+function semOf(v,area,su){if(v==null)return"empty";const [y,g]=semUmbral(area,su);return v>=g?"ok":v>=y?"warn":"bad"}
+function semRow(x){return semOf(x.r.c||0,semArea(x.r),x.su)}
+function semCount(list){const o={ok:0,warn:0,bad:0};for(const x of list)o[semRow(x)]++;return o}
+function semBar(o){const t=o.ok+o.warn+o.bad;if(!t)return"";return `<div class="sbar" title="${o.ok} verde · ${o.warn} amarillo · ${o.bad} rojo">`+["ok","warn","bad"].filter(k=>o[k]).map(k=>`<i class="g-${k}" style="width:${o[k]/t*100}%"></i>`).join("")+`</div>`}
+// color del promedio de un grupo, solo si todas sus clases usan los mismos rangos
+function semProm(list){if(!list.length)return"";const ks=new Set(list.map(x=>semArea(x.r)+"|"+x.su));if(ks.size!==1)return"";const [a,su]=[...ks][0].split("|");return semOf(list.reduce((t,x)=>t+(x.r.c||0),0)/list.length,a,su)}
+function semLegend(list){
+  const g={};for(const x of list){const a=semArea(x.r),u=semUmbral(a,x.su),k=u.join("-");const e=g[k]||(g[k]={u,who:new Set()});e.who.add(sucCorto(x.su)+" "+areaNombre(a))}
+  const gs=Object.values(g);if(!gs.length)return"";
+  return `<div class="semleg"><span>Semáforo por clase:</span>`+gs.map(e=>`<span>${gs.length>1?esc([...e.who].join(", "))+": ":""}<b class="t-bad">1–${e.u[0]-1}</b> · <b class="t-warn">${e.u[0]}–${e.u[1]-1}</b> · <b class="t-ok">${e.u[1]}+</b> asistentes</span>`).join("")+`</div>`;
+}
+function semTile(list){const o=semCount(list);return `<div class="kpi"><small>Semáforo de clases</small>${semBar(o)}<span><b class="t-ok">${o.ok}</b> verde · <b class="t-warn">${o.warn}</b> amarillo · <b class="t-bad">${o.bad}</b> rojo</span></div>`}
+function cat(ta){const n=norm(ta);if(!n||n==="total")return"total";if(n.includes("bota"))return"botas";if(n.includes("estir"))return"estiramiento";return"otra"}
+function computeRows(list,area){
+  const cfg=cfgOf(area||state.area), qty=cfg.modo==="cantidad", prom=cfg.modo==="promedio", capf=cfg.modo==="capacidad";
+  const by={};
+  for(const x of list){const k=x.su+"|"+x.ini+"|"+x.fin+"|"+x.r.t;(by[k]=by[k]||{su:x.su,raw:x.r.t,ini:x.ini,fin:x.fin,rows:[]}).rows.push(x.r)}
+  const cols={},recursos={},otros={},cache={};
+  for(const g of Object.values(by)){
+    const ck=g.su+"|"+g.raw;
+    const res=cache[ck]||(cache[ck]=resolveName(g.raw,cfg,g.su)); if(res.kind==="skip")continue;
+    const detail=g.rows.some(r=>cat(r.ta)!=="total");
+    const use=detail?g.rows.filter(r=>cat(r.ta)!=="total"):g.rows;
+    // n = clases impartidas (reporte de clases); cupo = lugares de la sala × clases
+    const m={at:0,cap:0,estir:0,botas:0,agend:0,hasAgend:false,n:0,nv:0,cupo:0};
+    for(const r of use){m.at+=r.c||0;if(r.a!=null){m.agend+=r.a;m.hasAgend=true}
+      if(r.sa!=null){const cu=cupoClase(r,g.su,cfg);m.n++;if(r.v!==0)m.nv++;m.cupo+=cu;m.cap+=cu}else m.cap+=r.g||0;
+      const k=cat(r.ta);if(k==="botas")m.botas+=r.c||0;else if(k==="estiramiento")m.estir+=r.c||0}
+    if(res.kind==="col"){const t=cols[res.id]||(cols[res.id]={at:0,cap:0,estir:0,botas:0,agend:0,hasAgend:false,n:0,nv:0,cupo:0,fuentes:[],keys:[]});
+      const who=(qty||prom||capf)?cfg.roster.find(r=>r.id===res.id):null, goal=who&&!capf?goalOf(who,cfg):null;
+      // capacidad fija: capacidad semanal × semanas del periodo (una vez por periodo)
+      if(capf){const pk=g.ini+"|"+g.fin;if(!t.keys.includes(pk)){t.keys.push(pk);t.cap+=g.ini&&g.fin?capPeriodo(who,cfg,g.ini,g.fin):m.cap}}
+      else if(qty){const pk=g.ini+"|"+g.fin;if(!t.keys.includes(pk)){t.keys.push(pk);if(goal!=null)t.cap+=goal*monthFrac(g.ini,g.fin)}}
+      else if(prom){if(goal!=null)t.cap+=goal*m.n}
+      else t.cap+=m.cap;
+      t.at+=m.at;t.estir+=m.estir;t.botas+=m.botas;t.agend+=m.agend;t.hasAgend=t.hasAgend||m.hasAgend;t.n+=m.n;t.nv+=m.nv;t.cupo+=m.cupo;
+      if(!t.fuentes.includes(g.raw))t.fuentes.push(g.raw)}
+    else{const bucket=res.kind==="recurso"?recursos:otros;const k=g.su+"|"+norm(g.raw);
+      const t=bucket[k]||(bucket[k]={nombre:g.raw,su:g.su,at:0,cap:0});t.at+=m.at;t.cap+=m.cap}
+  }
+  return{cols,recursos,otros};
+}
+function metaOf(id,area){const cfg=cfgOf(area||state.area),c=cfg.roster.find(x=>x.id===id);
+  if(cfg.modo==="capacidad")return c&&cfg.metaPct[c.turno]!=null?cfg.metaPct[c.turno]:(c?c.meta:0.9);
+  if(cfg.modo!=="ocupacion")return 1;return c?c.meta:0.9}
+function avgMeta(ids,area){const ms=ids.map(id=>metaOf(id,area));return ms.length?ms.reduce((a,b)=>a+b,0)/ms.length:0.9}
+// suma de un grupo; mc = Σ(capacidad × meta) para que la meta del grupo pese por capacidad
+function sumFor(ids,cols,area){const o={at:0,cap:0,estir:0,botas:0,agend:0,hasAgend:false,mc:0,n:0,nv:0,cupo:0};
+  for(const id of ids){const m=cols[id];if(!m)continue;o.at+=m.at;o.cap+=m.cap;o.estir+=m.estir;o.botas+=m.botas;o.agend+=m.agend;o.hasAgend=o.hasAgend||m.hasAgend;o.mc+=m.cap*metaOf(id,area);o.n+=m.n||0;o.nv+=m.nv||0;o.cupo+=m.cupo||0}
+  return o}
+// indicadores de clases
+function promOf(m){return m&&m.n>0?m.at/m.n:null}
+function aforoOf(m){return m&&m.cupo>0?m.at/m.cupo:null}
+function fmt1(v){return v==null||!isFinite(v)?"–":v.toFixed(1)}
+function ocup(m){return m&&m.cap>0?m.at/m.cap:null}
+function cumpOf(m){return m&&m.mc>0?m.at/m.mc:null}
+function metaEff(m,ids,area){return m&&m.cap>0?m.mc/m.cap:avgMeta(ids,area)}
+function grade(c){if(c==null)return"empty";if(c>=1)return"ok";if(c>=0.9)return"warn";return"bad"}
+function sortedPeriods(area){return state.periods.filter(p=>!area||(p.area||"recovery")===area).sort((a,b)=>a.inicio<b.inicio?-1:a.inicio>b.inicio?1:0)}
+function isFullMonth(ini,fin){const [y,m]=ini.split("-").map(Number);return ini.slice(8)==="01"&&fin===iso(new Date(y,m,0))}
+function colLabel(ini,fin){
+  if(isFullMonth(ini,fin))return MESES[+ini.slice(5,7)-1].slice(0,3)+" "+ini.slice(2,4);
+  return spanDays(ini,fin)<=7?fmtShort(ini):fmtShort(ini)+" "+ini.slice(2,4)+" – "+fmtShort(fin)+" "+fin.slice(2,4);
+}
+function overlapNote(){
+  const suc=state.f.suc;
+  const ps=sortedPeriods(state.area).filter(p=>suc==="all"||(p.sucursal||"NAC")===suc);
+  for(let i=0;i<ps.length;i++)for(let j=i+1;j<ps.length;j++){
+    const a=ps[i],b=ps[j];
+    if((a.sucursal||"NAC")===(b.sucursal||"NAC")&&b.inicio<=a.fin)
+      return `<div class="note">Hay periodos cargados que se enciman en ${esc(sucNombre(a.sucursal||"NAC"))} (${colLabel(a.inicio,a.fin)} y ${colLabel(b.inicio,b.fin)}). En Acumulado se suman los dos; elimina el que sobre en Cargar export.</div>`;
+  }
+  return"";
+}
+// resumen de un área con los filtros vigentes (se recalcula en cada render)
+let _stats={};
+function areaStats(area){
+  if(_stats[area])return _stats[area];
+  const md0=cfgOf(area).modo, Z={at:0,cap:0,mc:0,n:0,nv:0,cupo:0};
+  if(md0==="accesos"){const st=accStats(area);return _stats[area]={area,ros:[],accesos:true,st,m:Z,o:st.pct,c:st.c,con:0,enMeta:0,none:!st.dias.length}}
+  if(md0==="ingresos"){const mes=capMesFor(area),t=ingTot(ingItems(area,mes));return _stats[area]={area,ros:[],ingresos:true,mes,t,m:Z,o:null,c:t.c,con:0,enMeta:0,none:!t.con.length}}
+  if(md0==="cartera"){
+    const mes=capMesFor(area), items=cartItems(area,mes).filter(x=>x.s&&x.s.n), ros=rosterSel({area});
+    return _stats[area]={area,ros,cartera:true,mes,m:{at:0,cap:0,mc:0,n:0,nv:0,cupo:0},o:null,
+      c:items.length?items.reduce((a,x)=>a+x.s.score,0)/items.length:null,con:items.length,enMeta:items.filter(x=>x.s.cumple).length,none:!items.length};
+  }
+  const rows=selRows({area}), ros=rosterSel({area}), ids=ros.map(r=>r.id);
+  let s={area,ros,none:true};
+  if(rows.length){
+    const cols=computeRows(rows,area).cols, m=sumFor(ids,cols,area);
+    const con=ros.filter(r=>cols[r.id]&&cols[r.id].cap>0);
+    s={area,ros,rows,cols,m,o:ocup(m),c:cumpOf(m),con:con.length,
+      enMeta:con.filter(r=>cumpOf(sumFor([r.id],cols,area))>=1).length,none:!m.cap&&!m.at};
+  }
+  return _stats[area]=s;
+}
+
+/* ---------- vistas ---------- */
+function tabsFor(){const l=L(),md=cfgOf(state.area).modo;
+  if(md==="accesos")return[["tablero","Tablero"],["pizarra","Por día"],["equipo","Captura y metas"]];
+  if(md==="ingresos")return[["tablero","Tablero"],["equipo","Captura y metas"]];
+  return[["tablero","Tablero"],["colaborador","Por "+l.persona.toLowerCase()],["pizarra","Pizarra"],["aforos",areaById(state.area)&&areaById(state.area).grupo==="estudios"?"Clases":"Aforos y recursos"],["bonos","Bonos"],["cargar","Cargar export"],["equipo",l.equipo]]}
+function renderTabs(){
+  const nav=document.getElementById("tabs");
+  nav.innerHTML=state.area==="resumen"?"":tabsFor().map(([k,l])=>`<button role="tab" data-tab="${k}" aria-selected="${state.tab===k}">${l}</button>`).join("");
+}
+function renderSide(){
+  const cur=state.area;
+  const item=a=>{const s=areaStats(a.id);const g=s.none?"none":grade(s.c);
+    // estudios sin meta: se muestra el promedio de asistentes por clase
+    const val=s.none?"":s.c==null&&s.m.n?fmt1(promOf(s.m)):pct(s.c), tip=!s.none&&s.c==null&&s.m.n?` title="Promedio de asistentes por clase"`:"";
+    return `<button class="sitem" data-area="${a.id}" aria-current="${cur===a.id?"page":"false"}"><span class="dot ${g==="none"?"none":"g-"+g}"></span><span class="sname">${esc(a.nombre)}</span><span class="sval"${tip}>${val}</span></button>`};
+  const curName=cur==="resumen"?"Resumen general":areaNombre(cur);
+  document.getElementById("side").className="side"+(state.navOpen?" open":"");
+  document.getElementById("side").innerHTML=`
+    <div class="side-head"><span class="eyebrow">Deportes</span><strong>${esc(scopeLabel())}</strong></div>
+    <button class="navtoggle" data-nav="1" aria-expanded="${state.navOpen}"><span><span class="eyebrow">Deportes</span><strong>${esc(curName)}</strong></span><span class="chev">${state.navOpen?"Cerrar ▲":"Áreas ▼"}</span></button>
+    <nav class="side-nav" aria-label="Áreas de deportes">
+      <button class="sitem home" data-area="resumen" aria-current="${cur==="resumen"?"page":"false"}"><span class="sname">Resumen general</span></button>
+      ${GRUPOS.map(([g,l])=>`<p class="sgroup">${l}</p>`+AREAS.filter(a=>a.grupo===g).map(item).join("")).join("")}
+    </nav>`;
+}
+function render(){
+  syncFilter();
+  _stats={};
+  renderSide();
+  renderTabs();
+  const ar=areaById(state.area);
+  document.getElementById("eyebrow").textContent=ar?"Deportes · "+grupoNombre(ar.grupo):"Deportes";
+  document.getElementById("h1").textContent=(ar?ar.nombre:"Resumen general")+" · "+scopeLabel();
+  document.getElementById("sub").textContent=facts().length?turnoLabel()+" · "+rangeLabel()+(horaLabel()?" · "+horaLabel():""):"Sube el export de TrainingGym de cada área y la pizarra se llena sola.";
+  const v=document.getElementById("view");
+  if(!ar){v.innerHTML=viewResumen();return}
+  const md=cfgOf(state.area).modo, cart=md==="cartera";
+  const views=md==="accesos"?{tablero:viewTableroAccesos,pizarra:viewPizarraAccesos,equipo:viewEquipo}
+    :md==="ingresos"?{tablero:viewTableroIngresos,equipo:viewEquipo}
+    :{tablero:cart?viewTableroCartera:viewTablero,colaborador:cart?viewColaboradorCartera:viewColaborador,cargar:viewCargar,pizarra:cart?viewPizarraCartera:viewPizarra,aforos:viewAforos,bonos:cart?viewBonosCartera:viewBonos,equipo:viewEquipo};
+  if(!views[state.tab]){state.tab="tablero";renderTabs()}
+  v.innerHTML=views[state.tab]();
+}
+function areaHasData(){return state.periods.some(p=>(p.area||"recovery")===state.area)}
+function emptyArea(text){
+  const n=areaNombre(state.area), l=L();
+  return `<div class="panel empty-state"><h2>Aún no hay datos de ${esc(n)}</h2><p>${text||"Sube el export de TrainingGym de "+esc(n)+". Si es la primera vez, al subirlo puedes dar de alta a los "+l.personas+" que aparezcan."}</p>
+    <div class="row"><button class="btn" data-go="cargar">Cargar export</button><button class="btn ghost" data-go="equipo">${l.equipo}</button></div></div>`;
+}
+function noSel(){
+  const f=state.f;
+  const why=f.rango==="dia"?"Los exports cargados no traen fecha por día para esta selección.":"No hay datos cargados para esta combinación de sucursal y periodo.";
+  return `<div class="panel empty-state"><h2>Sin datos para esta selección</h2><p>${why}</p><div class="row"><button class="btn ghost" data-frango="acum">Ver acumulado</button></div></div>`;
+}
+
+function filterBar(opt){
+  opt=opt||{}; const f=state.f;
+  const chip=(attr,val,label,on,sub)=>`<button class="chip" ${attr}="${val}" aria-pressed="${on}">${label}${sub?`<span class="sub">${sub}</span>`:""}</button>`;
+  let h=`<div class="panel filters">
+    <div class="fgroup"><span class="flabel">Sucursal</span><div class="chips" role="group" aria-label="Sucursal">`+
+      chip("data-fsuc","all","Vivo 47",f.suc==="all","general")+
+      SUCURSALES.map(s=>chip("data-fsuc",s.id,esc(s.nombre),f.suc===s.id)).join("")+`</div></div>
+    `+(opt.turno===false?"":`<div class="fgroup"><span class="flabel">Turno</span><div class="chips" role="group" aria-label="Turno">`+
+      [["all","Todos"],["MAT","Matutino"],["VES","Vespertino"]].map(([k,l])=>chip("data-fturno",k,l,f.turno===k)).join("")+`</div></div>`);
+  if(opt.fecha!==false){
+    const ops=dateOptions();
+    h+=`<div class="fgroup"><span class="flabel">Periodo</span><div class="row" style="gap:8px"><div class="chips" role="group" aria-label="Periodo">`+
+      [["acum","Acumulado"],["mes","Mes"],["semana","Semana"],["dia","Día"],["fechas","Fechas"]].map(([k,l])=>chip("data-frango",k,l,f.rango===k)).join("")+`</div>`;
+    if(f.rango==="fechas"){
+      const [a,b]=(f.valor.fechas||"|").split("|"), d=dateBounds(), lim=d.a?`min="${d.a}" max="${d.b}"`:"";
+      h+=`<div class="stepper"><input type="date" id="fDesde" aria-label="Desde" value="${a||""}" ${lim}><span class="muted">a</span><input type="date" id="fHasta" aria-label="Hasta" value="${b||""}" ${lim}></div>`;
+    }else if(f.rango!=="acum"){
+      const list=ops[f.rango], cur=f.valor[f.rango], i=list.indexOf(cur);
+      if(list.length)h+=`<div class="stepper"><button data-fstep="-1" aria-label="Anterior" ${i<=0?"disabled":""}>‹</button>
+        <select id="fval" aria-label="Elegir ${f.rango}">${list.slice().reverse().map(v=>`<option value="${v}" ${v===cur?"selected":""}>${valLabel(f.rango,v)}</option>`).join("")}</select>
+        <button data-fstep="1" aria-label="Siguiente" ${i>=list.length-1?"disabled":""}>›</button></div>`;
+      else h+=`<span class="muted small">${f.rango==="dia"?"Los exports no traen fecha por día. Exporta de TG con la columna Fecha.":f.rango==="mes"?"No hay periodos que quepan en un solo mes. Agrega Fecha de inicio y Fecha de fin al export.":"No hay periodos semanales. Sube exports de lunes a domingo."}</span>`;
+    }
+    h+=`</div></div>`;
+  }
+  if(hasClases(curAreaScope()))h+=`<div class="fgroup"><span class="flabel">Clases</span><div class="chips" role="group" aria-label="Clases">`+
+    chip("data-fvalid","0","Todas",!f.valid)+chip("data-fvalid","1","Solo validadas",f.valid)+`</div></div>`;
+  if(hasClases(curAreaScope())){
+    // horario: rango de horas de inicio, con todas las horas que hay en los datos
+    const [hd,hh]=horaRango(), hs=[...new Set(horasDisponibles().concat([hd,hh].filter(Boolean)))].sort();
+    const opt=(v,sel)=>hs.map(x=>`<option value="${x}" ${x===sel?"selected":""}>${x}</option>`).join("");
+    h+=`<div class="fgroup"><span class="flabel">Horario</span><div class="stepper">
+      <select id="hDesde" aria-label="Horario desde"><option value="">Desde la primera</option>${opt(0,hd)}</select><span class="muted">a</span>
+      <select id="hHasta" aria-label="Horario hasta"><option value="">Hasta la última</option>${opt(1,hh)}</select>
+      ${hd||hh?`<button class="btn ghost small" data-hclear="1">Quitar</button>`:""}</div></div>`;
+  }
+  return h+`</div>`;
+}
+function hasClases(area){return facts().some(x=>areaOk(x,area)&&x.r.sa!=null)}
+function horasDisponibles(){const s=new Set();for(const x of facts())if(x.r.h&&areaOk(x,curAreaScope())&&sucOk(x,state.f.suc))s.add(x.r.h);return [...s].sort()}
+function horaRango(){const a=state.f.hDesde||"", b=state.f.hHasta||"";return a&&b&&a>b?[b,a]:[a,b]}
+function horaLabel(){const [a,b]=horaRango();return a||b?(a||"inicio")+"–"+(b||"cierre"):""}
+
+function kpi(label,val,sub,g){return `<div class="kpi"><small>${label}</small><b class="${g?"t-"+g:""}">${val}</b>${sub?`<span>${sub}</span>`:""}</div>`}
+function meter(o,meta,g){return `<div class="meter"><i class="g-${g}" style="width:${Math.min(100,(o||0)*100)}%"></i>${meta!=null?`<b style="left:${Math.min(100,meta*100)}%"></b>`:""}</div>`}
+function bcard(label,sub,m,attr){
+  const o=ocup(m),c=cumpOf(m),g=grade(c),me=m.cap?m.mc/m.cap:null;
+  if(!m.cap&&m.n)return `<button class="bcard" ${attr}><span class="bl">${label}</span><span class="bs">${sub}</span><b>${fmt1(promOf(m))}</b><span class="bs">asistentes por clase · ${fmtN(m.n)} clases</span></button>`;
+  if(!m.cap&&!m.at)return `<button class="bcard" ${attr}><span class="bl">${label}</span><span class="bs">${sub}</span><b class="t-empty">–</b><span class="bs">Sin datos en este periodo</span></button>`;
+  return `<button class="bcard" ${attr}><span class="bl">${label}</span><span class="bs">${sub}</span>
+    <b class="t-${g}">${pct(o,1)}</b><span class="bs">${L().qty?fmtN(m.at)+" de "+fmtN(m.cap)+" "+esc(L().atl):L().ocupado+" · meta "+pct(me)}</span>
+    ${meter(o,me,g)}<span class="tag ${g}">${pct(c)} de la meta</span></button>`;
+}
+// lista de ranking: items {attr, label, sub(html), c, o, at, ocupado}
+function rankList(items){
+  const con=items.filter(x=>x.c!=null).sort((a,b)=>b.c-a.c||(b.at||0)-(a.at||0));
+  if(!con.length)return"";
+  const scale=Math.min(2,Math.max(1.2,Math.ceil(con[0].c*10)/10));
+  const ticks=[0,0.5,1,scale];
+  return `<div class="rk-list"><div class="rk rk-axis" aria-hidden="true"><span></span><span class="who"></span><span class="track">${ticks.map(t=>`<em class="${t===1?"m":""}" style="left:${t/scale*100}%">${t===1?"Meta":pct(t)}</em>`).join("")}</span><span class="val"></span></div>`+
+    con.map((x,i)=>{const g=grade(x.c);
+      return `<button class="rk" ${x.attr} aria-label="${esc(x.label)}: ${pct(x.c)} de la meta. Ver detalle">
+        <span class="pos ${i<3?"top":""}">${i+1}</span>
+        <span class="who"><strong>${esc(x.label)}</strong><span>${x.sub}</span></span>
+        <span class="track"><i class="g-${g}" style="width:${Math.min(100,x.c/scale*100)}%"></i><span class="mk" style="left:${100/scale}%"></span></span>
+        <span class="val"><b class="t-${g}">${pct(x.c)}</b><span>${x.valSub!=null?x.valSub:pct(x.o,1)+" "+(x.ocupado||"ocupada")}</span></span></button>`}).join("")+`</div>`;
+}
+// ranking sin meta (clases): por promedio de asistentes por clase; items {attr,label,sub(html),val,valSub}
+function promList(items){
+  const con=items.filter(x=>x.val!=null).sort((a,b)=>b.val-a.val);
+  if(!con.length)return"";
+  const max=Math.max(...con.map(x=>x.val))||1;
+  return `<div class="rk-list">`+con.map((x,i)=>`<button class="rk" ${x.attr} aria-label="${esc(x.label)}: ${fmt1(x.val)} asistentes por clase. Ver detalle">
+      <span class="pos ${i<3?"top":""}">${i+1}</span>
+      <span class="who"><strong>${esc(x.label)}</strong><span>${x.sub}</span></span>
+      <span class="track"><i style="width:${x.val/max*100}%;background:var(--brand)"></i></span>
+      <span class="val"><b>${fmt1(x.val)}</b><span>${x.valSub||"por clase"}</span></span></button>`).join("")+`</div>`;
+}
+const LEGEND=`<div class="legend"><span style="--c:var(--ok)">Cumple meta</span><span style="--c:var(--warn-fill)">90–99% de la meta</span><span style="--c:var(--bad)">Debajo del 90%</span></div>`;
+
+function uploadDeportes(){
+  const p=state.pending;
+  const ign=Object.keys(state.global.extra).filter(k=>state.global.extra[k]==="__ignorar").sort();
+  let h=`<div class="panel"><div class="panel-head"><div><h2>Cargar export de Deportes</h2>
+    <p>Sirve para dos reportes de TrainingGym: el export de Deportes con varias áreas (cada nombre se va a su área; los nuevos te los pregunta una vez) y el reporte de clases (cada clase se va a su estudio según la sala).</p></div></div>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Seleccionar export de Deportes">
+      <strong>Arrastra aquí el export de Deportes</strong>
+      <span>.xlsx o .csv, tal como sale de TG. También puedes hacer clic para elegirlo.</span>
+    </div>
+    <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>`;
+  if(p&&p.area!=="deportes")h+=`<div class="note">Tienes un export sin guardar en ${esc(areaNombre(p.area))}. <button class="btn ghost small" data-area="${p.area}">Ir a ${esc(areaNombre(p.area))}</button></div>`;
+  if(ign.length)h+=`<p class="section-label" style="margin-top:14px">No se cuentan en ninguna área (${ign.length})</p><div class="pending-chips">${ign.map(k=>`<span class="tag">${esc(titleCase(k))} <button class="btn ghost small" style="padding:0 6px;border:0" data-rmg="${esc(k)}" aria-label="Volver a contar a ${esc(titleCase(k))}">✕</button></span>`).join("")}</div>`;
+  return h+`</div>`;
+}
+function viewResumen(){
+  let h=filterBar();
+  if(state.pending&&state.pending.area==="deportes")h+=viewPending(state.pending);
+  if(!facts().length)return h+`<div class="panel empty-state"><h2>Todavía no hay datos de deportes</h2><p>Sube abajo el export de Deportes con todas las áreas, o elige un área en la barra lateral y sube el suyo.</p></div>`+uploadDeportes();
+  const all=AREAS.map(a=>({a,s:areaStats(a.id)}));
+  const con=all.filter(x=>!x.s.none);
+  // Baile repite clases que ya cuentan en su sala: no se suma al total
+  // solo áreas con capacidad o meta capturada; Baile no se suma (sus clases ya están en su sala)
+  const tot=con.filter(x=>x.a.id!=="baile"&&x.s.m.cap>0).reduce((o,x)=>{o.at+=x.s.m.at;o.cap+=x.s.m.cap;o.mc+=x.s.m.mc;return o},{at:0,cap:0,mc:0});
+  const cls=con.filter(x=>x.a.id!=="baile"&&x.s.m.n).reduce((o,x)=>{o.n+=x.s.m.n;o.nv+=x.s.m.nv;o.at+=x.s.m.at;return o},{n:0,nv:0,at:0});
+  const c=cumpOf(tot), g=grade(c);
+  const enMeta=con.filter(x=>x.s.c!=null&&x.s.c>=1).length;
+  h+=`<div class="kpis">`+
+    kpi("Atendidos",fmtN(tot.at),"de "+fmtN(tot.cap)+" de capacidad")+
+    kpi("% ocupación",pct(ocup(tot),1),"agenda y aforo juntos",g)+
+    kpi("Cumplimiento",pct(c),"contra la meta de cada quien",g)+
+    kpi("Áreas en meta",`${enMeta} <span style="font-size:1rem;color:var(--muted)">de ${con.filter(x=>x.s.c!=null).length}</span>`,"con meta y datos en este periodo")+
+    `</div>`;
+  if(cls.n)h+=`<div class="kpis">`+kpi("Clases",fmtN(cls.n),cls.nv<cls.n?fmtN(cls.nv)+" validadas":"todas validadas")+
+    kpi("Asistentes a clases",fmtN(cls.at),"todos los estudios")+kpi("Promedio por clase",fmt1(cls.at/cls.n),"asistentes")+`</div>`;
+  for(const [grp,label] of GRUPOS){
+    const list=all.filter(x=>x.a.grupo===grp);
+    const items=list.filter(x=>!x.s.none).map(x=>{const l=L(x.a.id);
+      if(x.s.accesos)return{attr:`data-area="${x.a.id}"`,label:x.a.nombre,c:x.s.c,valSub:pct(x.s.st.pct,1)+" de fuerza",sub:`${fmtN(x.s.st.real)} de ${fmtN(x.s.st.base)} que van a fuerza · meta ${pct(cfgOf(x.a.id).metaAcc)}`};
+      if(x.s.ingresos)return{attr:`data-area="${x.a.id}"`,label:x.a.nombre,c:x.s.c,valSub:monthLabel(x.s.mes),sub:`${money(x.s.t.ing)} de ${money(x.s.t.meta)} sin IVA`};
+      if(x.s.cartera)return{attr:`data-area="${x.a.id}"`,label:x.a.nombre,c:x.s.c,valSub:monthLabel(x.s.mes),sub:`${x.s.enMeta} de ${x.s.con} coaches cumplen cartera, rutina y activos`};
+      return{attr:`data-area="${x.a.id}"`,label:x.a.nombre,c:x.s.c,o:x.s.o,at:x.s.m.at,ocupado:l.ocupado,valSub:l.qty?fmtN(x.s.m.at)+" de "+fmtN(x.s.m.cap):null,
+        sub:`${fmtN(x.s.m.at)} ${esc(l.atl)} · ${x.s.enMeta} de ${x.s.con} ${l.personas} en meta`}});
+    const sin=list.filter(x=>x.s.none);
+    const conMeta=items.filter(x=>x.c!=null), sinMeta=list.filter(x=>!x.s.none&&x.s.c==null&&x.s.m.n);
+    h+=`<div class="panel"><div class="panel-head"><div><h2>${label}</h2><p>${grp==="estudios"?"% de aforo ocupado por estudio":"% de agenda ocupada por área"}, ordenado por cumplimiento de la meta.</p></div></div>`;
+    h+=conMeta.length?rankList(items)+LEGEND:sinMeta.length?"":`<p class="muted">Ningún ${grp==="estudios"?"estudio":"área"} tiene datos en esta selección.</p>`;
+    if(sinMeta.length)h+=`<p class="section-label" style="margin-top:${conMeta.length?14:0}px">Sin meta todavía · promedio de asistentes por clase</p>`+
+      promList(sinMeta.map(x=>({attr:`data-area="${x.a.id}"`,label:x.a.nombre,val:promOf(x.s.m),valSub:fmtN(x.s.m.n)+" clases",
+        sub:`${fmtN(x.s.m.at)} asistentes${x.s.m.nv<x.s.m.n?" · "+fmtN(x.s.m.n-x.s.m.nv)+" sin validar":""}`})));
+    if(sin.length)h+=`<p class="section-label" style="margin-top:14px">Sin datos en este periodo</p><div class="pending-chips">${sin.map(x=>`<button class="chip" data-area="${x.a.id}">${esc(x.a.nombre)}</button>`).join("")}</div>`;
+    h+=`</div>`;
+  }
+  return h+uploadDeportes();
+}
+
+function viewTablero(){
+  if(!areaHasData())return emptyArea();
+  let h=filterBar();
+  const rows=selRows(); if(!rows.length)return h+noSel();
+  const {cols}=computeRows(rows);
+  const roster=rosterSel(), ids=roster.map(r=>r.id), l=L();
+  if(!roster.length)return h+`<div class="panel empty-state"><h2>Sin ${l.personas} registrados</h2><p>No hay ${l.personas} de ${esc(areaNombre(state.area))} en ${esc(scopeLabel())} con este turno. Dalos de alta en ${l.equipo} o al subir el export.</p><div class="row"><button class="btn" data-go="equipo">${l.equipo}</button></div></div>`;
+  const m=sumFor(ids,cols), o=ocup(m), c=cumpOf(m), g=grade(c);
+  const con=roster.filter(r=>cols[r.id]&&cols[r.id].cap>0);
+  const enMeta=con.filter(r=>cumpOf(sumFor([r.id],cols))>=1).length;
+  if(m.n)h+=`<div class="kpis">`+
+    kpi("Clases",fmtN(m.n),m.nv<m.n?`${fmtN(m.nv)} validadas · ${fmtN(m.n-m.nv)} sin validar`:"todas validadas")+
+    kpi("Asistentes",fmtN(m.at),"en el periodo")+
+    kpi("Promedio por clase",fmt1(promOf(m)),"asistentes")+
+    kpi("% aforo",pct(aforoOf(m),1),m.cupo?"asistentes ÷ cupo de la sala":"falta capturar el cupo de la sala")+semTile(rows.filter(x=>x.r.sa!=null))+
+    (c!=null?kpi("Cumplimiento",pct(c),l.prom?"promedio ÷ meta por clase":"contra la meta",g)+
+      kpi("En meta",`${enMeta} <span style="font-size:1rem;color:var(--muted)">de ${con.length}</span>`,l.personas+" con datos"):"")+
+    `</div>`;
+  else h+=`<div class="kpis">`+
+    (l.qty
+      ?kpi(l.at,fmtN(m.at),"en el periodo")+
+       kpi("Meta",m.cap?fmtN(m.cap):"–",m.cap?"suma de metas mensuales":"sin meta capturada")+
+       kpi("Cumplimiento",pct(c),"completadas ÷ meta",g)
+      :kpi("Atendidos",fmtN(m.at),"de "+fmtN(m.cap)+" en "+l.cap.toLowerCase())+
+       kpi(l.ocup,pct(o,1),l.capfija?"completadas ÷ capacidad semanal":"completadas ÷ target",g)+
+       kpi("Meta",pct(metaEff(m,ids),1),ids.length>1?"ponderada por capacidad":"")+
+       kpi("Cumplimiento",pct(c),"% ocupación ÷ meta",g))+
+    kpi("En meta",`${enMeta} <span style="font-size:1rem;color:var(--muted)">de ${con.length}</span>`,l.personas+" con datos")+
+    `</div>`;
+  const parts=[];
+  const plural=n=>`${n} ${n===1?l.persona.toLowerCase():l.personas}`;
+  if(state.f.suc==="all"){
+    parts.push(`<p class="section-label">Por sucursal</p><div class="bgrid">`+SUCURSALES.map(s=>{
+      const sids=roster.filter(r=>r.sucursal===s.id).map(r=>r.id);
+      return bcard(esc(s.nombre),sids.length?plural(sids.length):"Sin equipo registrado",sumFor(sids,cols),`data-fsuc="${s.id}"`)}).join("")+`</div>`);
+  }
+  if(state.f.turno==="all"&&esEstudio(state.area)){
+    parts.push(`<p class="section-label">Por turno (hora de la clase)</p><div class="bgrid">`+["MAT","VES"].map(t=>{
+      const mt=sumFor(ids,computeRows(rows.filter(x=>claseTurno(x.r)===t)).cols);
+      return bcard(TURNOS[t],t==="MAT"?"5:00 a 12:30":"17:00 a 21:00",mt,`data-fturno="${t}"`)}).join("")+`</div>`);
+  }else if(state.f.turno==="all"){
+    parts.push(`<p class="section-label">Por turno</p><div class="bgrid">`+["MAT","VES"].map(t=>{
+      const tids=roster.filter(r=>r.turno===t).map(r=>r.id);
+      return bcard(TURNOS[t],plural(tids.length),sumFor(tids,cols),`data-fturno="${t}"`)}).join("")+`</div>`);
+  }
+  if(parts.length)h+=`<div class="panel">${parts.join('<div style="height:16px"></div>')}</div>`;
+  h+=rankingPanel(cols,roster);
+  if(state.f.rango==="acum")h+=overlapNote();
+  return h;
+}
+
+function rankingPanel(cols,roster){
+  const l=L(), showSuc=state.f.suc==="all";
+  const items=roster.map(r=>{const m=sumFor([r.id],cols);return{r,m,o:ocup(m),c:cumpOf(m)}});
+  const con=items.filter(x=>x.c!=null), sin=items.filter(x=>x.c==null);
+  const enMeta=con.filter(x=>x.c>=1).length;
+  let h=`<div class="panel"><div class="panel-head"><div><h2>Ranking vs meta</h2>
+    <p>${l.prom?"Ordenado por cumplimiento: promedio de asistentes por clase ÷ meta por clase.":l.qty?"Ordenado por cumplimiento: "+esc(l.atl)+" ÷ meta mensual de su sucursal y turno.":"Ordenado por cumplimiento: "+l.ocup+" ÷ meta de cada quien."} La línea punteada es su meta.</p></div>
+    <span class="tag ${enMeta?"ok":""}">${enMeta} de ${con.length} en meta</span></div>`;
+  if(!con.length&&items.some(x=>x.m.n)){
+    return `<div class="panel"><div class="panel-head"><div><h2>Ranking por promedio de asistentes</h2>
+      <p>Todavía no hay meta ni cupo capturados; se ordena por promedio de asistentes por clase.</p></div></div>`+
+      promList(items.filter(x=>x.m.n).map(x=>({attr:`data-colab="${esc(x.r.id)}"`,label:x.r.nombre,val:promOf(x.m),valSub:fmtN(x.m.n)+" clases",
+        sub:`${showSuc?esc(sucCorto(x.r.sucursal))+" · ":""}${fmtN(x.m.at)} asistentes`})))+
+      (sin.length>items.filter(x=>x.m.n).length?`<p class="muted small" style="margin:10px 0 0">Sin clases en este periodo: ${items.filter(x=>!x.m.n).map(x=>esc(x.r.nombre)).join(", ")}.</p>`:"")+`</div>`;
+  }
+  if(!con.length)return h+`<p class="muted">Nadie tiene capacidad registrada en esta selección.</p></div>`;
+  h+=rankList(con.map(x=>({attr:`data-colab="${esc(x.r.id)}"`,label:x.r.nombre,c:x.c,o:x.o,at:x.m.at,ocupado:l.ocupado,
+    sub:`${showSuc?esc(sucCorto(x.r.sucursal))+" · ":""}${TURNO_CORTO[x.r.turno]||esc(x.r.turno)} · meta ${esc(metaTxt(x.r))}`,valSub:l.prom?fmt1(promOf(x.m))+" por clase":l.qty?fmtN(x.m.at)+" "+esc(l.atl):null})));
+  if(sin.length)h+=`<p class="muted small" style="margin:10px 0 0">Sin datos${l.qty?" o sin meta capturada":""} en este periodo: ${sin.map(x=>esc(x.r.nombre)).join(", ")}.</p>`;
+  return h+LEGEND+`</div>`;
+}
+
+function vchart(series,meta){
+  if(!series.length)return `<p class="muted">Sin datos para graficar.</p>`;
+  const maxO=Math.max(...series.map(s=>s.o||0));
+  const scale=Math.max(1,maxO*1.12,meta*1.15);
+  const dense=series.length>16;
+  return `<div class="scroll"><div class="vchart${dense?" dense":""}" style="--m:${meta/scale};min-width:${series.length*(dense?44:52)}px">
+    <div class="vmeta"><span>Meta ${pct(meta)}</span></div>`+
+    series.map(s=>{const g=grade(s.c);
+      return `<div class="vcol" title="${esc(s.label)}: ${pct(s.o,1)} · ${fmtN(s.m.at)}/${fmtN(s.m.cap)}"><div class="vwrap"><i class="g-${g}" style="height:${(s.o||0)/scale*100}%"><span>${pct(s.o)}</span></i></div><div class="vlab">${esc(s.label)}</div></div>`}).join("")+
+    `</div></div>`;
+}
+function viewColaborador(){
+  if(!areaHasData())return emptyArea();
+  let h=filterBar();
+  const roster=rosterSel(), l=L();
+  if(!roster.length)return h+`<div class="panel empty-state"><h2>Sin ${l.personas}</h2><p>No hay ${l.personas} registrados con estos filtros.</p></div>`;
+  // una persona tiene un registro por sucursal; la vista general los junta
+  const people=peopleOf(roster);
+  if(!state.colab||!roster.some(x=>x.id===state.colab))state.colab=people[0].entries[0].id;
+  const person=people.find(p=>p.entries.some(e=>e.id===state.colab));
+  const sucs=[...new Set(person.entries.map(e=>e.sucursal))];
+  let vs=state.colabSuc||"all"; if(sucs.length===1)vs=sucs[0]; else if(vs!=="all"&&!sucs.includes(vs))vs="all";
+  const entries=vs==="all"?person.entries:person.entries.filter(e=>e.sucursal===vs);
+  const ids=entries.map(e=>e.id), idset=new Set(ids), r=entries[0];
+  const rows=selRows();
+  const {cols}=computeRows(rows);
+  const m=sumFor(ids,cols), o=ocup(m), c=cumpOf(m), g=grade(c);
+  const rankIn=(cc,ros)=>{const arr=peopleOf(ros).map(p=>({k:p.k,c:cumpOf(sumFor(p.entries.map(e=>e.id),cc))})).filter(x=>x.c!=null).sort((a,b)=>b.c-a.c);const i=arr.findIndex(x=>x.k===person.k);return i<0?null:{pos:i+1,n:arr.length}};
+  const tuTxt=state.f.turno!=="all"?" · "+TURNO_CORTO[state.f.turno].toLowerCase():"";
+  const rk1=vs==="all"?rankIn(cols,roster):rankIn(cols,roster.filter(x=>x.sucursal===vs)), rk1Lbl=vs==="all"?scopeLabel():sucNombre(vs);
+  let rk2=null; if(vs!=="all"||state.f.suc!=="all"){const cAll=computeRows(selRows({suc:"all"})).cols;rk2=rankIn(cAll,rosterSel({suc:"all"}))}
+  const opts=people.map(p=>{const ss=[...new Set(p.entries.map(e=>e.sucursal))];return `<option value="${esc(p.entries[0].id)}" ${p===person?"selected":""}>${esc(p.nombre)}${state.f.suc==="all"?" · "+ss.map(sucCorto).join(", "):""}</option>`}).join("");
+  const otras=AREAS.filter(a=>a.id!==state.area).map(a=>({a,e:cfgOf(a.id).roster.find(e=>personKey(e)===person.k)})).filter(x=>x.e);
+  h+=`<div class="panel"><div class="colhead"><div>
+      <label class="f" style="margin-bottom:8px">${l.persona}<select id="colSel">${opts}</select></label>
+      <h2>${esc(person.nombre)}</h2>
+      <div class="meta-line">${esc(areaNombre(state.area))} · ${esc((vs==="all"?sucs:[vs]).map(sucNombre).join(", "))}${esEstudio(state.area)?"":" · "+(TURNOS[r.turno]||esc(r.turno))} · meta ${esc(metaTxt(r))}${cfgOf(state.area).modo==="capacidad"&&horarioTxt(r)?" · "+esc(horarioTxt(r)):""}${l.qty?" al mes":""}</div>
+      ${sucs.length>1?`<div class="chips" role="group" aria-label="Sucursal" style="margin-top:10px">`+
+        [["all","General"]].concat(sucs.map(x=>[x,sucNombre(x)])).map(([k,t])=>`<button class="chip" data-csuc="${k}" aria-pressed="${vs===k}">${esc(t)}</button>`).join("")+`</div>`:""}
+      ${otras.length?`<div class="row small" style="margin-top:10px;gap:6px"><span class="muted">También está en:</span>${otras.map(x=>`<button class="btn ghost small" data-colabarea="${x.a.id}|${esc(x.e.id)}">${esc(x.a.nombre)}</button>`).join("")}</div>`:""}</div>
+    <div class="rankpill">${rk1?`<span>#<b>${rk1.pos}</b> de ${rk1.n} en ${esc(rk1Lbl)}${tuTxt}</span>`:""}${rk2?`<span>#<b>${rk2.pos}</b> de ${rk2.n} en Vivo 47${tuTxt}</span>`:""}</div>
+  </div></div>`;
+  if(!m.cap&&!m.at&&!m.n)return h+`<div class="panel empty-state"><h2>Sin datos en este periodo</h2><p>${esc(person.nombre)} no aparece en los exports de ${esc(rangeLabel().toLowerCase())}.</p></div>`;
+  if(m.n)h+=`<div class="kpis">`+
+    kpi("Clases",fmtN(m.n),m.nv<m.n?`${fmtN(m.nv)} validadas`:"todas validadas")+
+    kpi("Asistentes",fmtN(m.at),"en el periodo")+
+    kpi("Promedio por clase",fmt1(promOf(m)),"asistentes")+
+    kpi("% aforo",pct(aforoOf(m),1),m.cupo?"asistentes ÷ cupo":"falta el cupo de la sala")+
+    (c!=null?kpi("Cumplimiento",pct(c),c>=1?"Cumple meta":"",g):"")+
+    `</div>`;
+  else h+=`<div class="kpis">`+
+    (l.qty
+      ?kpi(l.at,fmtN(m.at),m.cap?"meta "+fmtN(m.cap)+" en el periodo":"sin meta capturada")
+      :kpi("Atendidos",fmtN(m.at),"de "+fmtN(m.cap)+" en "+l.cap.toLowerCase())+
+       kpi(l.ocup,pct(o,1),"meta "+pct(r.meta),g))+
+    kpi("Cumplimiento",pct(c),c==null?"":c>=1?"Cumple meta":"Faltan "+fmtN(Math.max(0,Math.ceil(m.mc-m.at)))+" "+esc(l.atl),g)+
+    (m.estir||m.botas?kpi("Estiramiento / Botas",fmtN(m.estir)+" / "+fmtN(m.botas),"desglose de tarea"):"")+
+    (m.hasAgend?kpi("Agendados",fmtN(m.agend),"socios con cita"):"")+
+    `</div>`;
+  if(state.f.rango!=="dia"){
+    const rgc=curRange(), useDay=(state.f.rango==="semana"||state.f.rango==="mes"||(state.f.rango==="fechas"&&rgc&&spanDays(rgc.from,rgc.to)<=45))&&rows.some(x=>x.f);
+    const groups={};
+    for(const x of rows){const k=useDay?x.f:x.ini+"|"+x.fin;if(!k)continue;(groups[k]=groups[k]||[]).push(x)}
+    const series=Object.keys(groups).sort().map(k=>{
+      const mm=sumFor(ids,computeRows(groups[k]).cols);
+      const label=useDay?DIAS[parseISO(k).getDay()]+" "+parseISO(k).getDate():colLabel(...k.split("|"));
+      return{k,label,m:mm,o:ocup(mm),c:cumpOf(mm)}}).filter(s=>s.m.cap||s.m.at||s.m.n);
+    const unidad=useDay?"día":series.every(s=>isFullMonth(...s.k.split("|")))?"mes":series.every(s=>spanDays(...s.k.split("|"))<=7)?"semana":"periodo";
+    const rowLabel=s=>{if(useDay)return valLabel("dia",s.k);const [a,b]=s.k.split("|");return isFullMonth(a,b)?monthLabel(monthKey(a)):fmtShort(a)+" – "+fmtShort(b)+" "+b.slice(0,4)};
+    if(m.n)h+=`<div class="panel"><div class="panel-head"><div><h2>Sus clases por ${unidad}</h2></div></div>${series.some(s=>s.o!=null)?vchart(series,metaOf(r.id)):""}
+        <div class="scroll" style="margin-top:10px"><table><thead><tr><th>${unidad.charAt(0).toUpperCase()+unidad.slice(1)}</th><th class="num">Clases</th><th class="num">Asistentes</th><th class="num">Promedio</th><th class="num">% aforo</th><th class="num">Cumplimiento</th></tr></thead><tbody>`+
+        series.slice().reverse().map(s=>`<tr><td>${esc(rowLabel(s))}</td><td class="num">${fmtN(s.m.n)}</td><td class="num">${fmtN(s.m.at)}</td><td class="num">${fmt1(promOf(s.m))}</td><td class="num">${pct(aforoOf(s.m),1)}</td><td class="num">${s.c==null?"–":`<span class="tag ${grade(s.c)}">${pct(s.c)}</span>`}</td></tr>`).join("")+
+        `</tbody></table></div></div>`;
+    else h+=`<div class="panel"><div class="panel-head"><div><h2>${l.ocup} por ${unidad}</h2><p>Color según cumplimiento de su meta.</p></div></div>${vchart(series,metaOf(r.id))}
+      <div class="scroll" style="margin-top:14px"><table><thead><tr><th>${unidad.charAt(0).toUpperCase()+unidad.slice(1)}</th><th class="num">${esc(l.at)}</th><th class="num">${esc(l.cap)}</th><th class="num">${l.qty?"% de la meta":"% ocupación"}</th><th class="num">Cumplimiento</th></tr></thead><tbody>`+
+      series.slice().reverse().map(s=>`<tr><td>${esc(rowLabel(s))}</td><td class="num">${fmtN(s.m.at)}</td><td class="num">${fmtN(s.m.cap)}</td><td class="num">${pct(s.o,1)}</td><td class="num"><span class="tag ${grade(s.c)}">${pct(s.c)}</span></td></tr>`).join("")+
+      `</tbody></table></div></div>`;
+  }
+  if(m.n){
+    const cfg=cfgOf(state.area), mine=rows.filter(x=>x.r.sa!=null&&idset.has(resolveName(x.r.t,cfg,x.su).id));
+    h+=horarioPanel(mine,cfg,state.area+"|"+person.k+"|",vs==="all"&&sucs.length>1);
+  }
+  const src=[...new Set(ids.flatMap(id=>cols[id]?cols[id].fuentes:[]))];
+  if(src.length)h+=`<p class="muted small">Aparece en TrainingGym como: ${src.map(esc).join(" · ")}</p>`;
+  return h;
+}
+
+// misma persona en varias sucursales: se reconoce por su nombre en TG
+function personKey(r){return norm((r.alias&&r.alias[0])||r.nombre)}
+function peopleOf(ros){const m={};for(const r of ros){const k=personKey(r);(m[k]=m[k]||{k,nombre:r.nombre,entries:[]}).entries.push(r)}return Object.values(m).sort((a,b)=>a.nombre.localeCompare(b.nombre,"es"))}
+// horario del instructor: agrupado por día/hora/actividad con cada clase y su fecha, o clase por clase
+function horarioPanel(mine,cfg,base,showSuc){
+  const vista=state.hview||"slots";
+  const chipCls=x=>`<span class="cls"><span class="muted">${DIAS[parseISO(x.r.f).getDay()]} ${fmtShort(x.r.f)}</span> <span class="tag ${semRow(x)}">${fmtN(x.r.c||0)}</span>${x.r.v===0?` <span class="tag">sin validar</span>`:""}</span>`;
+  let h=`<div class="panel"><div class="panel-head"><div><h2>Horario</h2><p>${vista==="slots"?"Agrupado por día, hora y actividad, con la fecha y los asistentes de cada clase.":"Cada clase en orden de fecha."} El color es el semáforo de asistentes.</p></div>
+    <div class="seg" role="group" aria-label="Vista del horario"><button data-hview="slots" aria-pressed="${vista==="slots"}">Por horario</button><button data-hview="fechas" aria-pressed="${vista==="fechas"}">Clase por clase</button></div></div>${semBar(semCount(mine))}`;
+  if(vista==="fechas"){
+    const list=mine.slice().sort((a,b)=>(a.r.f+(a.r.h||""))<(b.r.f+(b.r.h||""))?-1:1);
+    h+=`<div class="scroll"><table><thead><tr><th>Fecha</th><th>Hora</th><th>Actividad</th>${showSuc?"<th>Sucursal</th>":""}<th class="num">Asistentes</th><th class="num">% del cupo</th><th>Estado</th></tr></thead><tbody>`+
+      list.map(x=>{const cupo=cupoClase(x.r,x.su,cfg);return `<tr><td>${DIAS[parseISO(x.r.f).getDay()]} ${fmtShort(x.r.f)}</td><td>${esc(x.r.h||"")}</td><td>${esc(x.r.ta)}</td>${showSuc?`<td>${esc(sucCorto(x.su))}</td>`:""}<td class="num"><span class="tag ${semRow(x)}">${fmtN(x.r.c||0)}</span></td><td class="num">${cupo?pct((x.r.c||0)/cupo):"–"}</td><td>${x.r.v===0?`<span class="tag">Sin validar</span>`:`<span class="muted">Validada</span>`}</td></tr>`}).join("")+`</tbody></table></div>`;
+  }else{
+    const slots={};
+    for(const x of mine){const dd=parseISO(x.r.f).getDay(),k=((dd+6)%7)+"|"+(x.r.h||"")+"|"+norm(x.r.ta)+"|"+x.su;const sl=slots[k]||(slots[k]={d:dd,h:x.r.h||"",ta:x.r.ta,su:x.su,n:0,at:0,list:[]});sl.n++;sl.at+=x.r.c||0;sl.list.push(x)}
+    const MAXV=4;
+    h+=`<div class="scroll"><table><thead><tr><th>Día</th><th>Hora</th><th>Actividad</th><th>Cada clase (fecha · asistentes)</th><th class="num">Promedio</th></tr></thead><tbody>`+
+      Object.keys(slots).sort().map(k=>{const sl=slots[k],key=base+k,open=!!state.open[key];
+        const list=sl.list.slice().sort((a,b)=>a.r.f<b.r.f?-1:1), shown=open||list.length<=MAXV?list:list.slice(-MAXV);
+        return `<tr><td>${DIAS[sl.d]}</td><td>${esc(sl.h)}</td><td>${esc(sl.ta)}${showSuc?` <span class="tag">${esc(sucCorto(sl.su))}</span>`:""}</td>
+          <td style="white-space:normal;min-width:240px"><div class="clslist" style="padding:0">${shown.map(chipCls).join("")}${list.length>MAXV?`<button class="btn ghost small" data-slot="${esc(key)}" aria-expanded="${open}">${open?"Ver menos":"Ver las "+list.length}</button>`:""}</div></td>
+          <td class="num"><span class="tag ${semProm(sl.list)}">${fmt1(sl.at/sl.n)}</span></td></tr>`}).join("")+`</tbody></table></div>`;
+  }
+  return h+semLegend(mine)+`</div>`;
+}
+function viewCargar(){
+  const p=state.pending, n=areaNombre(state.area);
+  let h=`<div class="panel">
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Seleccionar archivo de ${esc(n)}">
+      <strong>Arrastra aquí el export de TrainingGym de ${esc(n)}</strong>
+      <span>.xlsx o .csv, tal como sale. También puedes hacer clic para elegirlo.</span>
+    </div>
+    <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
+  </div>`;
+  if(p&&(p.area===state.area||(p.clases&&areaById(state.area).grupo==="estudios")))h+=viewPending(p);
+  else if(p){const dest=p.area==="deportes"?"resumen":p.area, dn=p.area==="deportes"?"Resumen general":areaNombre(p.area);
+    h+=`<div class="note">Tienes un export sin guardar en ${esc(dn)}. <button class="btn ghost small" data-area="${dest}">Ir a ${esc(dn)}</button></div>`}
+  const ps=sortedPeriods(state.area).reverse();
+  h+=`<div class="panel"><h2>Periodos cargados de ${esc(n)}</h2>`;
+  if(!ps.length)h+=`<p class="muted">Todavía no hay periodos. Sube tu primer export arriba.</p>`;
+  else h+=`<div class="scroll" style="margin-top:8px"><table><thead><tr><th>Sucursal</th><th>Periodo</th><th>Días</th><th>Archivo</th><th class="num">Filas</th><th></th></tr></thead><tbody>`+
+    ps.map(x=>{const ask=state.confirmDel===x.id;
+      return `<tr><td>${esc(sucNombre(x.sucursal||"NAC"))}</td><td>${fmtShort(x.inicio)} ${x.inicio.slice(0,4)} – ${fmtShort(x.fin)} ${x.fin.slice(0,4)}</td><td>${spanDays(x.inicio,x.fin)}</td><td>${esc(x.archivo||"")}</td><td class="num">${(x.rows||[]).length}</td>
+      <td>${ask?`<button class="btn danger small" data-del="${esc(x.id)}">Sí, eliminar</button> <button class="btn ghost small" data-nodel="1">Cancelar</button>`:`<button class="btn ghost small" data-askdel="${esc(x.id)}">Eliminar</button>`}</td></tr>`}).join("")+`</tbody></table></div>`;
+  h+=`</div>`;
+  return h;
+}
+function pendingFacts(p){return p.rows.map(r=>({r,su:r.su||p.sucursal||"NAC",f:null,ini:r.pi||"",fin:r.pf||""}))}
+function viewPending(p){
+  let h=`<div class="panel"><h2>${esc(p.fileName)}</h2>`;
+  if(p.error){
+    h+=`<div class="note bad">${esc(p.error)}</div>`;
+    if(p.aoa&&state.sample)h+=`<button class="btn" id="ai" ${p.aiBusy?"disabled":""}>${p.aiBusy?"Ordenando…":"Ordenar con IA"}</button>`;
+    return h+` <button class="btn ghost" id="cancelPending">Descartar</button></div>`;
+  }
+  const cfg=cfgOf(p.area), l=L(p.area);
+  const f=p.filtros||{};
+  h+=`<div class="grid2" style="margin-top:10px"><dl class="kv">
+    <dt>Área</dt><dd>${esc(areaNombre(p.area))}</dd>
+    <dt>Hoja</dt><dd>${esc(p.sheet)}</dd>
+    <dt>Filas leídas</dt><dd>${p.rows.length}</dd>
+    ${f.centro?`<dt>Centro</dt><dd>${esc(f.centro)}</dd>`:""}
+    ${f.rol?`<dt>Rol</dt><dd>${esc(f.rol)}</dd>`:""}
+    ${f.inicio?`<dt>Filtro de fechas</dt><dd>${fmtShort(f.inicio)} ${f.inicio.slice(0,4)} – ${fmtShort(f.fin)} ${f.fin.slice(0,4)}</dd>`:""}
+    ${p.aiUsed?`<dt>Columnas</dt><dd><span class="tag">Ordenado con IA</span></dd>`:""}
+  </dl><dl class="kv">`+
+  Object.keys(FIELD_LABEL).map(k=>`<dt>${FIELD_LABEL[k]}</dt><dd>${p.map[k]!=null?esc(p.headers[p.map[k]]||("col "+(p.map[k]+1))):'<span class="muted">no viene</span>'}</dd>`).join("")+
+  `</dl></div>`;
+  if(f.rol&&p.area!=="deportes")h+=`<p class="muted small" style="margin:8px 0 0">Revisa que el rol del export (“${esc(f.rol)}”) corresponda a ${esc(areaNombre(p.area))}.</p>`;
+
+  // sucursal
+  h+=`<h3 style="margin-top:14px">Sucursal</h3><div class="row" style="margin-top:6px">
+    <label class="f">${p.rowSuc?"Para filas sin sucursal":"Este export es de"}<select id="pSuc">${SUCURSALES.map(s=>`<option value="${s.id}" ${p.sucursal===s.id?"selected":""}>${esc(s.nombre)}</option>`).join("")}</select></label>
+    <span class="muted small">${p.rowSuc?"El archivo trae la sucursal en cada fila; se usa esa.":p.sucAuto?"Detectada en los filtros del export.":"No venía en el export; revisa que sea la correcta."}</span></div>`;
+
+  // periodo
+  if(p.hasFecha){
+    const weeks=new Set(p.rows.filter(r=>r.f).map(r=>iso(monday(parseISO(r.f)))));
+    h+=`<div class="note ok">El archivo trae fechas: se separará solo en ${weeks.size} semana${weeks.size>1?"s":""} (lunes a domingo) y se podrá filtrar por día.</div>`;
+  }
+  if(!p.hasFecha&&p.hasRango){
+    const rs=[...new Set(p.rows.filter(r=>r.pi).map(r=>r.pi+"|"+r.pf))].sort();
+    const partes=rs.map(k=>{const [a,b]=k.split("|");return isFullMonth(a,b)?monthLabel(monthKey(a)):fmtShort(a)+" "+a.slice(0,4)+" – "+fmtShort(b)+" "+b.slice(0,4)});
+    const largos=rs.filter(k=>{const [a,b]=k.split("|");return spanDays(a,b)>7&&monthKey(a)!==monthKey(b)}).length;
+    h+=`<div class="note ok">El archivo trae fecha de inicio y fin: se guardará en ${rs.length} periodo${rs.length>1?"s":""}: ${esc(partes.join(", "))}.</div>`;
+    if(largos)h+=`<div class="note">${largos} periodo${largos>1?"s abarcan":" abarca"} más de un mes; solo ${largos>1?"aparecerán":"aparecerá"} en Acumulado. Para verlo por mes, usa inicio y fin dentro del mismo mes.</div>`;
+    if(p.sinFecha)h+=`<div class="note">${p.sinFecha} fila${p.sinFecha>1?"s":""} no ${p.sinFecha>1?"traen":"trae"} fecha de inicio y fin; ${p.sinFecha>1?"se guardan":"se guarda"} con el periodo de abajo.</div>`;
+  }
+  if(!p.hasFecha&&(!p.hasRango||p.sinFecha)){
+    const d=spanDays(p.inicio,p.fin);
+    h+=`<h3 style="margin-top:14px">¿A qué periodo corresponde?</h3>
+    <div class="row" style="margin-top:6px">
+      <label class="f">Desde<input type="date" id="pIni" value="${p.inicio}"></label>
+      <label class="f">Hasta<input type="date" id="pFin" value="${p.fin}"></label>
+    </div>`;
+    if(d>7&&!p.hasRango)h+=`<div class="note">Este periodo abarca ${d} días. Solo aparecerá en Acumulado${d<=31?" y en el mes si cabe completo":""}. Para verlo por mes, agrega al export las columnas Fecha de inicio y Fecha de fin.</div>`;
+  }
+
+  // clasificación
+  if(p.area==="deportes")return h+(p.clases?pendingClases(p):pendingMulti(p))+pendingButtons(p);
+  const list=pendingFacts(p);
+  const c=computeRows(list,p.area);
+  const sucsIn=new Set(list.map(x=>x.su));
+  const roster=cfg.roster.filter(r=>sucsIn.has(r.sucursal));
+  h+=`<h3 style="margin-top:14px">Cómo se acomodó</h3><div class="scroll"><table><thead><tr><th>${l.persona}</th>${sucsIn.size>1?"<th>Sucursal</th>":""}<th>Aparece en TG como</th><th class="num">Completadas</th><th class="num">Target</th><th class="num">% ocupación</th></tr></thead><tbody>`+
+    (roster.length?roster.map(r=>{const m=c.cols[r.id];return `<tr><td>${esc(r.nombre)}</td>${sucsIn.size>1?`<td>${esc(sucCorto(r.sucursal))}</td>`:""}<td class="muted">${m?esc(m.fuentes.join(" + ")):"no aparece"}</td><td class="num">${m?m.at:"–"}</td><td class="num">${m?m.cap:"–"}</td><td class="num">${m?pct(ocup(m),1):"–"}</td></tr>`}).join("")
+      :`<tr><td colspan="6" class="muted">Todavía no hay ${l.personas} de ${esc(areaNombre(p.area))} en ${esc([...sucsIn].map(sucNombre).join(", "))}. Dalos de alta abajo con “Agregar como nuevo”.</td></tr>`)+
+    `</tbody></table></div>`;
+  const rec=Object.values(c.recursos);
+  if(rec.length)h+=`<p class="muted" style="margin:10px 0 0">Recursos detectados (camas, botas, salas…): ${rec.map(x=>esc(x.nombre)).join(", ")}.</p>`;
+  const ot=Object.values(c.otros);
+  if(ot.length){
+    const pool=cfg.roster.filter(r=>sucsIn.has(r.sucursal));
+    h+=`<div class="row" style="justify-content:space-between;margin-top:14px"><h3>Nombres que no están en el equipo (${ot.length})</h3>
+      <button class="btn ghost small" id="allNew">Agregar todos como nuevos</button></div>
+    <p class="muted" style="margin:2px 0 8px">Pueden ser ${l.personas} nuevos, bajas u otros roles. Asígnalos una vez y se recordará. Los nuevos entran como turno matutino y meta 90%; ajústalos después en ${l.equipo}.</p>
+    <div class="scroll"><table><thead><tr><th>Nombre en TG</th><th class="num">Completadas</th><th>Asignar a</th></tr></thead><tbody>`+
+    ot.map(x=>{const k=norm(x.nombre),v=p.assign[k]||"";
+      const r=routeName(x.nombre,x.su), otra=r.kind==="col"&&r.area!==p.area?` <span class="tag">Es de ${esc(areaNombre(r.area))}</span>`:r.ignored?` <span class="tag">No se cuenta</span>`:"";
+      return `<tr><td>${esc(x.nombre)}${otra}</td><td class="num">${x.at}</td><td><select class="inl" data-assign="${esc(k)}">
+      <option value="">Dejar fuera</option><option value="__nuevo" ${v==="__nuevo"?"selected":""}>Agregar como nuevo ${l.persona.toLowerCase()}</option>
+      ${pool.map(r=>`<option value="${r.id}" ${v===r.id?"selected":""}>${esc(r.nombre)}</option>`).join("")}
+      <option value="__recurso" ${v==="__recurso"?"selected":""}>Es un recurso (cama, sala…)</option><option value="__ignorar" ${v==="__ignorar"?"selected":""}>Ignorar siempre</option></select></td></tr>`}).join("")+
+    `</tbody></table></div>`;
+  }
+  return h+pendingButtons(p);
+}
+function pendingButtons(p){
+  if(p.clash)return `<div class="note">Ya hay ${p.clash} periodo(s) ${p.area==="deportes"?"de estas áreas":"de "+esc(areaNombre(p.area))} en ${esc(sucNombre(p.sucursal))} con esas fechas. Si guardas, se reemplazan.</div>
+    <div class="row" style="margin-top:12px"><button class="btn" id="replacePending">Reemplazar y guardar</button><button class="btn ghost" id="cancelPending">Descartar</button></div></div>`;
+  return `<div class="row" style="margin-top:16px"><button class="btn" id="savePending">Guardar en la pizarra</button><button class="btn ghost" id="cancelPending">Descartar</button></div></div>`;
+}
+// reporte de clases: a qué estudios va cada clase (su sala y, si es de baile, también Baile)
+function classAreas(r,salas){
+  const n=norm(r.sa), a=(salas&&salas[n])||salaArea(r.sa);
+  if(!a||a==="__ignorar")return[];
+  return a!=="baile"&&isBaile(r.ta)?[a,"baile"]:[a];
+}
+function pendingClases(p){
+  const suc=p.sucursal||"NAC", asg=p.salaAssign||{}, by={}, sin={};
+  let nv=0;
+  for(const r of p.rows){
+    if(r.v!==0)nv++;
+    const su=r.su||suc, k=norm(r.sa);
+    const areas=classAreas(r,asg);
+    if(!areas.length&&!(asg[k]==="__ignorar"||state.global.salas[k]==="__ignorar")){
+      const x=sin[k]||(sin[k]={nombre:r.sa||"(sin sala)",n:0,su:new Set()});x.n++;x.su.add(su);continue}
+    for(const a of areas){
+      const x=by[a]||(by[a]={n:0,nv:0,at:0,su:new Set(),inst:new Set(),nuevos:new Set()});
+      x.n++;if(r.v!==0)x.nv++;x.at+=r.c||0;x.su.add(su);x.inst.add(norm(r.t)+"|"+su);
+      if(resolveName(r.t,cfgOf(a),su).kind!=="col")x.nuevos.add(norm(r.t)+"|"+su);
+    }
+  }
+  const fechas=p.rows.filter(r=>r.f).map(r=>r.f).sort();
+  let h=`<div class="note ok">${fmtN(p.rows.length)} clases del ${fechas.length?fmtShort(fechas[0])+" al "+fmtShort(fechas[fechas.length-1])+" "+fechas[fechas.length-1].slice(0,4):"—"}: ${fmtN(nv)} validadas y ${fmtN(p.rows.length-nv)} sin validar. Se guardan todas; en la página puedes ver todas o solo las validadas.</div>
+    <h3 style="margin-top:14px">Cómo se reparte</h3><div class="scroll"><table><thead><tr><th>Estudio</th><th>Sucursales</th><th class="num">Clases</th><th class="num">Validadas</th><th class="num">Asistentes</th><th class="num">Promedio por clase</th><th class="num">Instructores</th></tr></thead><tbody>`+
+    AREAS.filter(a=>by[a.id]).map(a=>{const x=by[a.id];
+      return `<tr><td>${esc(a.nombre)}</td><td>${[...x.su].map(sucCorto).join(", ")}</td><td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.nv)}</td><td class="num">${fmtN(x.at)}</td><td class="num">${fmt1(x.at/x.n)}</td><td class="num">${x.inst.size}${x.nuevos.size?` <span class="muted">(${x.nuevos.size} nuevos)</span>`:""}</td></tr>`}).join("")+
+    `</tbody></table></div>
+    <p class="muted small" style="margin:8px 0 0">Los instructores nuevos se dan de alta solos en cada estudio y sucursal donde dan clase. Baile junta las actividades que contienen: ${state.global.baile.map(esc).join(", ")}.</p>`;
+  const ss=Object.entries(sin);
+  if(ss.length){
+    const opts=v=>AREAS.filter(a=>a.grupo==="estudios").map(a=>`<option value="${a.id}" ${v===a.id?"selected":""}>${esc(a.nombre)}</option>`).join("");
+    h+=`<h3 style="margin-top:14px">Salas sin estudio (${ss.length})</h3><p class="muted" style="margin:2px 0 8px">Elige a qué estudio va cada sala; se recordará.</p>
+    <div class="scroll"><table><thead><tr><th>Sala</th><th>Sucursales</th><th class="num">Clases</th><th>Estudio</th></tr></thead><tbody>`+
+    ss.map(([k,x])=>`<tr><td>${esc(x.nombre)}</td><td>${[...x.su].map(sucCorto).join(", ")}</td><td class="num">${x.n}</td><td><select class="inl" data-sala="${esc(k)}"><option value="">Dejar fuera esta vez</option>${opts(asg[k]||"")}<option value="__ignorar">No contar nunca</option></select></td></tr>`).join("")+
+    `</tbody></table></div>`;
+  }
+  return h;
+}
+async function commitClases(p,force){
+  const suc=p.sucursal||"NAC", asg=Object.fromEntries(Object.entries(p.salaAssign||{}).filter(([k,v])=>v));
+  const groups={};
+  for(const r of p.rows){
+    if(!r.f)continue;
+    const su=r.su||suc, w=iso(monday(parseISO(r.f))), fin=iso(addDays(parseISO(w),6));
+    for(const a of classAreas(r,asg)){const k=a+"|"+su+"|"+w;(groups[k]=groups[k]||{area:a,su,inicio:w,fin,rows:[]}).rows.push(r)}
+  }
+  const list=Object.values(groups);
+  if(!list.length){setStatus("No hay clases con fecha y sala para guardar");return}
+  const existing=new Set(state.periods.map(x=>x.id));
+  const clash=list.filter(x=>existing.has(periodId(x.area,x.su,x))).length;
+  if(clash&&!force){p.clash=clash;render();return}
+  setStatus("Guardando…");
+  try{
+    if(Object.keys(asg).length){const g=clone(state.global);Object.assign(g.salas,asg);await saveGlobal(g)}
+    // instructores nuevos → equipo de cada estudio, por sucursal
+    const cfgs={};
+    for(const x of list){
+      const cur=cfgs[x.area]||clone(cfgOf(x.area));
+      for(const r of x.rows){
+        if(resolveName(r.t,cur,x.su).kind==="col")continue;
+        cur.roster.push({id:"c"+Date.now().toString(36)+cur.roster.length,nombre:titleCase(r.t),sucursal:x.su,turno:"MAT",meta:cur.metaDef,alias:[norm(r.t)]});
+        cfgs[x.area]=cur;
+      }
+    }
+    for(const [a,c] of Object.entries(cfgs))await saveConfig(c,a);
+    for(const x of list)await savePeriod({id:periodId(x.area,x.su,x),area:x.area,sucursal:x.su,inicio:x.inicio,fin:x.fin,archivo:p.fileName,cargado:new Date().toISOString(),rows:x.rows});
+    state.pending=null; render();
+    setStatus(`Clases guardadas en ${new Set(list.map(x=>x.area)).size} estudios`);
+  }catch(e){setStatus("No se pudo guardar: "+(e.message||e.code))}
+}
+// export de Deportes con varias áreas: cómo se reparte y qué nombres faltan
+function pendingMulti(p){
+  const byArea={}, unk={}, ign=new Set();
+  for(const x of pendingFacts(p)){
+    const res=routeName(x.r.t,x.su);
+    if(res.kind==="skip"){if(res.ignored)ign.add(x.r.t);continue}
+    if(res.kind==="otro"){const k=norm(x.r.t);const u=unk[k]||(unk[k]={nombre:x.r.t,at:0,cap:0});u.at+=x.r.c||0;u.cap+=x.r.g||0;continue}
+    (byArea[res.area]=byArea[res.area]||[]).push(x);
+  }
+  const filas=AREAS.filter(a=>byArea[a.id]).map(a=>{
+    const c=computeRows(byArea[a.id],a.id);const m=Object.values(c.cols).reduce((o,x)=>{o.at+=x.at;o.cap+=x.cap;return o},{at:0,cap:0});
+    return `<tr><td>${esc(a.nombre)}</td><td class="num">${Object.keys(c.cols).length}</td><td class="num">${Object.keys(c.recursos).length||""}</td><td class="num">${fmtN(m.at)}</td><td class="num">${fmtN(m.cap)}</td><td class="num">${pct(ocup(m),1)}</td></tr>`});
+  let h=`<h3 style="margin-top:14px">Cómo se reparte</h3><div class="scroll"><table><thead><tr><th>Área</th><th class="num">Personas</th><th class="num">Recursos</th><th class="num">Completadas</th><th class="num">Target</th><th class="num">% ocupación</th></tr></thead><tbody>`+
+    (filas.length?filas.join(""):`<tr><td colspan="6" class="muted">Ningún nombre coincide todavía con los equipos registrados.</td></tr>`)+`</tbody></table></div>`;
+  if(ign.size)h+=`<p class="muted small" style="margin:10px 0 0">No se cuentan (${ign.size}): ${[...ign].map(esc).join(", ")}.</p>`;
+  const us=Object.entries(unk).sort((a,b)=>b[1].at-a[1].at);
+  if(us.length){
+    const opts=v=>GRUPOS.map(([g,l])=>`<optgroup label="${l}">${AREAS.filter(a=>a.grupo===g).map(a=>`<option value="area:${a.id}" ${v==="area:"+a.id?"selected":""}>${esc(a.nombre)}</option>`).join("")}</optgroup>`).join("");
+    h+=`<h3 style="margin-top:14px">Nombres sin área (${us.length})</h3>
+    <p class="muted" style="margin:2px 0 8px">Elige su área una vez y se recordará. Entran como nuevos en esa área con turno matutino y meta 90%; ajústalos después en su equipo.</p>
+    <div class="scroll"><table><thead><tr><th>Nombre en TG</th><th class="num">Completadas</th><th class="num">Target</th><th>Área</th></tr></thead><tbody>`+
+    us.map(([k,x])=>{const v=p.assign[k]||"";
+      return `<tr><td>${esc(x.nombre)}</td><td class="num">${fmtN(x.at)}</td><td class="num">${fmtN(x.cap)}</td><td><select class="inl" data-assign="${esc(k)}">
+        <option value="">Dejar fuera esta vez</option>${opts(v)}
+        <option value="__recurso" ${v==="__recurso"?"selected":""}>Recurso de Recovery (cama, bota…)</option>
+        <option value="__ignorar" ${v==="__ignorar"?"selected":""}>No contar nunca</option></select></td></tr>`}).join("")+`</tbody></table></div>`;
+  }
+  return h;
+}
+
+function metricValue(m,metric){
+  if(!m||(!m.cap&&!m.at&&!m.n))return{txt:"",cls:"empty"};
+  const o=ocup(m),c=cumpOf(m),g=grade(c);
+  switch(metric||state.metric){
+    case"prom":return{txt:fmt1(promOf(m)),cls:c!=null?g:"empty"};
+    case"n":return{txt:String(m.n),cls:"empty"};
+    case"aforo":return{txt:pct(aforoOf(m)),cls:c!=null?g:"empty"};
+    case"at":return{txt:String(m.at),cls:g};
+    case"cap":return{txt:String(m.cap),cls:"empty"};
+    case"cump":return{txt:pct(c),cls:g};
+    default:return{txt:pct(o),cls:g};
+  }
+}
+function pizarraModel(){
+  const by={};
+  for(const x of selRows()){const k=x.ini+"|"+x.fin;(by[k]=by[k]||{ini:x.ini,fin:x.fin,list:[]}).list.push(x)}
+  const columns=Object.values(by).sort((a,b)=>a.ini<b.ini?-1:a.ini>b.ini?1:(a.fin<b.fin?-1:1));
+  columns.forEach(c=>{const r=computeRows(c.list);c.cols=r.cols;c.recursos=r.recursos});
+  const months=[];
+  for(const c of columns){const k=monthKey(c.ini);let g=months.find(m=>m.k===k);if(!g)months.push(g={k,items:[],list:[]});g.items.push(c);g.list.push(...c.list)}
+  months.forEach(g=>{g.cols=computeRows(g.list).cols;g.solo=g.items.length===1&&isFullMonth(g.items[0].ini,g.items[0].fin)});
+  return{columns,months};
+}
+function pizarraGroups(){
+  const roster=rosterSel();
+  if(esEstudio(state.area))return SUCURSALES.filter(s=>roster.some(r=>r.sucursal===s.id)).map(s=>({s,turnos:[{t:"all",ids:roster.filter(r=>r.sucursal===s.id).map(r=>r.id)}]}));
+  return SUCURSALES.filter(s=>roster.some(r=>r.sucursal===s.id)).map(s=>({s,
+    turnos:["MAT","VES"].map(t=>({t,ids:roster.filter(r=>r.sucursal===s.id&&r.turno===t).map(r=>r.id)})).filter(g=>g.ids.length)}));
+}
+function viewPizarra(){
+  if(!areaHasData())return emptyArea();
+  let h=filterBar();
+  const {columns,months}=pizarraModel();
+  if(!columns.length)return h+noSel();
+  const groups=pizarraGroups(), l=L();
+  if(!groups.length)return h+`<div class="panel empty-state"><h2>Sin ${l.personas} registrados</h2><p>No hay ${l.personas} con estos filtros.</p></div>`;
+  // un mes cargado como mes completo se muestra en una sola columna
+  const ncols=months.reduce((n,g)=>n+(g.solo?1:g.items.length+1),0);
+  // estudios con clases: promedio, asistentes, clases y % aforo
+  const clases=columns.some(c=>c.list.some(x=>x.r.sa!=null));
+  const mets=clases?[["prom","Promedio por clase"],["at","Asistentes"],["n","Clases"],["aforo","% aforo"],["cump","Cumplimiento"]]
+    :(l.qty?[["ocup",l.ocup],["at",l.at],["cap",l.cap]]:[["ocup",l.ocup],["cump","Cumplimiento vs meta"],["at","Atendidos"],["cap",l.cap]]);
+  const metric=mets.some(x=>x[0]===state.metric)?state.metric:mets[0][0];
+  const cellsFor=ids=>months.map(g=>{
+    const tv=metricValue(sumFor(ids,g.cols),metric);
+    if(g.solo)return `<td class="cell ${tv.cls} month" style="font-weight:700">${tv.txt}</td>`;
+    const per=g.items.map((x,i)=>{const v=metricValue(sumFor(ids,x.cols),metric);return `<td class="cell ${v.cls}${i===0?" month":""}">${v.txt}</td>`}).join("");
+    return per+`<td class="cell ${tv.cls}" style="font-weight:700">${tv.txt}</td>`;
+  }).join("");
+  h+=`<div class="panel"><div class="row" style="justify-content:space-between;margin-bottom:12px">
+    <div class="seg" role="group" aria-label="Indicador">${mets.map(([k,t])=>`<button data-metric="${k}" aria-pressed="${metric===k}">${t}</button>`).join("")}</div>
+    ${state.downloads?`<button class="btn ghost" id="export">Descargar Excel</button>`:""}
+  </div><div class="scroll"><table class="pz"><thead>
+    <tr><th class="name"></th>${months.map(g=>`<th class="mh" colspan="${g.solo?1:g.items.length+1}">${monthLabel(g.k)}</th>`).join("")}</tr>
+    <tr><th class="name">${l.persona}</th>${months.map(g=>g.solo?`<th class="wk">Mes</th>`:g.items.map(x=>`<th class="wk">${colLabel(x.ini,x.fin)}</th>`).join("")+`<th class="wk">Mes</th>`).join("")}</tr>
+  </thead><tbody>`;
+  const multi=groups.length>1;
+  const cfg=cfgOf(state.area);
+  for(const G of groups){
+    if(multi)h+=`<tr class="sh"><td class="name">${esc(G.s.nombre)}</td><td colspan="${ncols}"></td></tr>`;
+    for(const T of G.turnos){
+      for(const id of T.ids){const r=cfg.roster.find(x=>x.id===id);
+        h+=`<tr><td class="name">${esc(r.nombre)} <span class="muted">· meta ${esc(l.qty?(goalOf(r,cfg)==null?"–":fmtN(goalOf(r,cfg))):pct(r.meta))}</span></td>${cellsFor([id])}</tr>`}
+      if(G.turnos.length>1)h+=`<tr class="sub"><td class="name">${TURNOS[T.t]}</td>${cellsFor(T.ids)}</tr>`;
+    }
+    h+=`<tr class="${multi?"sub":"total"}"><td class="name">Total ${esc(G.s.corto)}</td>${cellsFor(G.turnos.flatMap(t=>t.ids))}</tr>`;
+  }
+  if(multi)h+=`<tr class="total"><td class="name">Vivo 47 total</td>${cellsFor(groups.flatMap(G=>G.turnos.flatMap(t=>t.ids)))}</tr>`;
+  h+=`</tbody></table></div>
+  <div class="legend"><span style="--c:var(--ok-bg)">Cumple meta</span><span style="--c:var(--warn-bg)">90–99% de la meta</span><span style="--c:var(--bad-bg)">Debajo del 90% de la meta</span><span style="--c:var(--cell-empty)">Sin datos</span></div>
+  <p class="muted" style="font-size:.85rem;margin:10px 0 0">${clases
+    ?`Promedio = asistentes ÷ clases impartidas. % aforo = asistentes ÷ (cupo de la sala × clases). El color aparece cuando hay meta capturada.`
+    :l.qty
+    ?`% de la meta = ${esc(l.atl)} (Completadas de TG) ÷ meta mensual de su sucursal y turno. Semanas y días usan la parte proporcional de la meta del mes.`
+    :l.capfija?`${l.ocup} = completadas de TG ÷ capacidad del periodo (capacidad semanal repartida en los días que trabaja cada quien, sin su día de descanso). La meta depende del turno.`
+    :`${l.ocup} = completadas ÷ target de TrainingGym. Cumplimiento = atendidos ÷ (capacidad × meta); en totales la meta pesa por la capacidad de cada ${l.persona.toLowerCase()}.`}</p></div>`;
+  return h;
+}
+
+function viewAforos(){
+  if(!areaHasData())return emptyArea();
+  let h=filterBar();
+  const rows=selRows(); if(!rows.length)return h+noSel();
+  if(rows.some(x=>x.r.sa!=null))return h+viewClases(rows.filter(x=>x.r.sa!=null));
+  const c=computeRows(rows), l=L();
+  const showSuc=state.f.suc==="all";
+  const name=x=>esc(x.nombre)+(showSuc&&x.su?` <span class="tag">${esc(sucCorto(x.su))}</span>`:"");
+  const bars=(list,metaFn)=>`<div class="scroll"><table><thead><tr><th>Nombre</th><th class="num">Usos</th><th class="num">Capacidad</th><th class="num">Ocupación</th><th style="width:40%"></th></tr></thead><tbody>`+
+    list.map(x=>{const o=ocup(x);const g=grade(o!=null?o/metaFn(x):null);
+      return `<tr><td>${name(x)}</td><td class="num">${fmtN(x.at)}</td><td class="num">${x.cap?fmtN(x.cap):"–"}</td><td class="num"><span class="tag ${g==="empty"?"":g}">${pct(o,1)}</span></td>
+      <td><div class="bar"><i class="g-${g}" style="width:${Math.min(100,(o||0)*100)}%"></i></div></td></tr>`}).join("")+`</tbody></table></div>`;
+  const recList=Object.values(c.recursos).sort((a,b)=>(ocup(b)||0)-(ocup(a)||0));
+  const colList=rosterSel().filter(r=>c.cols[r.id]).map(r=>Object.assign({nombre:r.nombre,su:r.sucursal,meta:metaOf(r.id)},c.cols[r.id])).sort((a,b)=>(ocup(b)||0)-(ocup(a)||0));
+  h+=`<div class="panel"><h2>Recursos</h2><p class="muted" style="margin:2px 0 10px">Camas, botas, salas y otros recursos que TG registra como técnico. Referencia de color: 80% de ocupación.</p>`+
+    (recList.length?bars(recList,()=>0.8):`<p class="muted">Este periodo no trae recursos.</p>`)+`</div>`;
+  h+=`<div class="panel"><h2>${l.cap} por ${l.persona.toLowerCase()}</h2>`+(colList.length?bars(colList,x=>x.meta):`<p class="muted">Sin ${l.personas} en este periodo.</p>`)+`</div>`;
+  const ol=Object.values(c.otros);
+  if(ol.length)h+=`<div class="panel"><h2>Otros técnicos en el export</h2><p class="muted" style="margin:2px 0 10px">No están en el equipo actual; no cuentan en la pizarra ni en bonos.</p>`+bars(ol.sort((a,b)=>b.at-a.at),()=>0.9)+`</div>`;
+  return h;
+}
+
+// análisis de clases de un estudio: por actividad, horario y día
+function viewClases(rows){
+  const cupos=cfgOf(state.area).cupos, showSuc=state.f.suc==="all";
+  const agg=(keyFn,labelFn)=>{const m={};for(const x of rows){const k=keyFn(x);const a=m[k]||(m[k]={k,label:labelFn(x),n:0,nv:0,at:0,cupo:0,list:[]});a.n++;if(x.r.v!==0)a.nv++;a.at+=x.r.c||0;a.cupo+=cupoClase(x.r,x.su,cfgOf(state.area));a.list.push(x)}return Object.values(m)};
+  const table=(title,sub,list,head)=>`<div class="panel"><div class="panel-head"><div><h2>${title}</h2><p>${sub}</p></div></div><div class="scroll"><table><thead><tr><th>${head}</th><th class="num">Clases</th><th class="num">Asistentes</th><th class="num">Promedio</th><th class="num">% aforo</th><th style="width:26%">Semáforo de sus clases</th></tr></thead><tbody>`+
+    list.map(a=>{const sc=semProm(a.list),o=semCount(a.list);return `<tr><td>${a.label}</td><td class="num">${fmtN(a.n)}${a.nv<a.n?` <span class="muted">(${a.n-a.nv} sin validar)</span>`:""}</td><td class="num">${fmtN(a.at)}</td><td class="num">${sc?`<span class="tag ${sc}">${fmt1(a.at/a.n)}</span>`:fmt1(a.at/a.n)}</td><td class="num">${a.cupo?pct(a.at/a.cupo,1):"–"}</td>
+      <td title="${o.ok} verde · ${o.warn} amarillo · ${o.bad} rojo">${semBar(o)}</td></tr>`}).join("")+`</tbody></table></div></div>`;
+  const tot=rows.reduce((o,x)=>{o.n++;o.at+=x.r.c||0;return o},{n:0,at:0});
+  let h=`<div class="kpis">`+kpi("Clases",fmtN(tot.n))+kpi("Asistentes",fmtN(tot.at))+kpi("Promedio por clase",fmt1(tot.at/tot.n))+
+    (Object.keys(cupos).length?"":kpi("% aforo","–","captura el cupo en Instructores y metas"))+semTile(rows)+`</div>`+semLegend(rows);
+  h+=table("Por actividad","Qué clases llenan más, por promedio de asistentes.",agg(x=>norm(x.r.ta)+(showSuc?"|"+x.su:""),x=>esc(x.r.ta)+(showSuc?` <span class="tag">${esc(sucCorto(x.su))}</span>`:"")).sort((a,b)=>b.at/b.n-a.at/a.n),"Actividad");
+  h+=table("Por horario","Promedio de asistentes según la hora de inicio.",agg(x=>x.r.h||"—",x=>esc(x.r.h||"—")).sort((a,b)=>a.k<b.k?-1:1),"Hora");
+  h+=table("Por día de la semana","",agg(x=>(parseISO(x.r.f).getDay()+6)%7,x=>{const d=parseISO(x.r.f).getDay();return ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][d]}).sort((a,b)=>a.k-b.k),"Día");
+  return h;
+}
+function tierFor(c,area){const ts=cfgOf(area||state.area).tiers.slice().sort((a,b)=>b.min-a.min);for(const t of ts)if(c!=null&&c>=t.min)return t;return null}
+function bonoRows(k){
+  const rows=selRows({range:rangeFor("mes",k)});
+  const cols=computeRows(rows).cols;
+  const keys=[...new Set(rows.map(x=>x.ini+"|"+x.fin))];
+  return{weeks:keys.length, mensual:keys.some(k=>spanDays(...k.split("|"))>7),
+    list:rosterSel().map(r=>{const m=sumFor([r.id],cols);const o=ocup(m);const c=cumpOf(m);return{r,m,o,c,t:tierFor(c)}})};
+}
+function viewBonos(){
+  if(!areaHasData())return emptyArea();
+  let h=filterBar({fecha:false});
+  const months=dateOptions().mes, l=L();
+  if(!months.length)return h+`<div class="panel empty-state"><h2>Sin meses completos</h2><p>Los bonos son mensuales. Sube exports con Fecha de inicio y Fecha de fin, o semanales, para ${esc(scopeLabel())}.</p></div>`;
+  if(!state.bonoMonth||!months.includes(state.bonoMonth))state.bonoMonth=months[months.length-1];
+  const {weeks,mensual,list}=bonoRows(state.bonoMonth);
+  const showSuc=state.f.suc==="all";
+  h+=`<div class="panel"><div class="row" style="justify-content:space-between">
+    <label class="f">Mes<select id="bonoSel">${months.map(k=>`<option value="${k}" ${k===state.bonoMonth?"selected":""}>${monthLabel(k)}</option>`).join("")}</select></label>
+    <span class="muted">${mensual?"Datos del mes completo":`${weeks} semana${weeks===1?"":"s"} cargada${weeks===1?"":"s"} en el mes`}</span></div></div>
+  <div class="panel"><h2>Reporte de bonos · ${esc(areaNombre(state.area))} · ${monthLabel(state.bonoMonth)}</h2><div class="scroll" style="margin-top:10px"><table><thead><tr>
+    <th>${l.persona}</th>${showSuc?"<th>Sucursal</th>":""}<th>Turno</th><th class="num">${esc(l.at)}</th><th class="num">${esc(l.cap)}</th>${l.qty?"":`<th class="num">% ocupación</th><th class="num">Meta</th>`}<th class="num">Cumplimiento</th><th>Resultado</th></tr></thead><tbody>`+
+    list.map(x=>`<tr><td>${esc(x.r.nombre)}</td>${showSuc?`<td>${esc(sucCorto(x.r.sucursal))}</td>`:""}<td>${esc(x.r.turno)}</td><td class="num">${fmtN(x.m.at)}</td><td class="num">${fmtN(x.m.cap)}</td>${l.qty?"":`<td class="num">${pct(x.o,1)}</td><td class="num">${pct(x.r.meta)}</td>`}
+      <td class="num">${pct(x.c,1)}</td><td>${x.m.cap?(x.t?`<span class="tag ok">${esc(x.t.etiqueta)}</span>`:`<span class="tag bad">No alcanza</span>`):'<span class="muted">Sin datos</span>'}</td></tr>`).join("")+
+  `</tbody></table></div>
+  <p class="muted" style="font-size:.85rem;margin:10px 0 0">${l.qty?"Mide "+esc(l.atl)+" contra la meta mensual.":"Solo mide ocupación."} Testimonios, 5 estrellas, encuestas y NPS no vienen en este export de TG; ajusta los escalones en ${l.equipo} cuando tengan la regla completa.</p></div>`;
+  return h;
+}
+
+function viewEquipo(){
+  const dirty=state.dirty&&state.dirty.area===state.area?state.dirty.cfg:null;
+  const cfg=dirty||cfgOf(state.area), l=L(), prom=cfg.modo==="promedio", qty=cfg.modo==="cantidad"||prom, capf=cfg.modo==="capacidad", cart=cfg.modo==="cartera", u=prom?"asistentes":(cfg.unidad||"completadas");
+  const est=areaById(state.area).grupo==="estudios";
+  const acc=cfg.modo==="accesos", ingm=cfg.modo==="ingresos";
+  let h=(cart?capturaPanel(state.area,cfg):"")+(acc?capturaAccesos(state.area,cfg)+metasAccesos(state.area,cfg):"")+(ingm?capturaIngresos(state.area,cfg):"")+`<div class="panel"><h2>Cómo se mide la meta</h2>
+    <div class="row" style="margin-top:8px;align-items:flex-end">
+      <label class="f">Tipo de meta<select id="cfgModo" data-cfg="modo">
+        <option value="ocupacion" ${!qty?"selected":""}>% de agenda ocupada (Completadas ÷ Target)</option>
+        <option value="cantidad" ${cfg.modo==="cantidad"?"selected":""}>Número al mes (Completadas contra una meta)</option>
+        <option value="promedio" ${prom?"selected":""}>Promedio de asistentes por clase (meta en número)</option>
+        <option value="capacidad" ${capf?"selected":""}>% de agenda con capacidad fija por semana</option>
+        <option value="cartera" ${cart?"selected":""}>Cartera de socios (captura manual)</option>
+        <option value="accesos" ${acc?"selected":""}>% de los accesos al club que van a fuerza (captura diaria)</option>
+        <option value="ingresos" ${ingm?"selected":""}>Meta de ingresos (captura mensual)</option></select></label>
+      ${cfg.modo==="cantidad"?`<label class="f">Qué cuenta Completadas<input id="cfgUnidad" data-cfg="unidad" value="${esc(u)}" placeholder="socios activos"></label>`:""}
+    </div>`;
+  if(qty){
+    h+=`<p class="muted" style="margin:12px 0 8px">${prom?"Meta de asistentes por clase":"Meta mensual de "+esc(u)} por ${l.persona.toLowerCase()}, según su sucursal y turno. Si alguien tiene una meta distinta, ponla en su fila abajo.</p>
+    <div class="scroll"><table style="max-width:520px"><thead><tr><th>Sucursal</th><th class="num">Matutino</th><th class="num">Vespertino</th></tr></thead><tbody>`+
+    SUCURSALES.map(s=>`<tr><td>${esc(s.nombre)}</td>`+["MAT","VES"].map(t=>{const k=s.id+"|"+t,v=cfg.metasTurno[k];
+      return `<td class="num"><input class="inl" id="mt_${s.id}_${t}" type="number" min="0" step="1" data-mt="${k}" value="${v==null?"":v}" placeholder="–"></td>`}).join("")+`</tr>`).join("")+
+    `</tbody></table></div>`;
+  }
+  if(capf)h+=`<div class="row" style="margin-top:12px;align-items:flex-end">
+      <label class="f">Capacidad semanal (por defecto)<input class="inl" id="capDef" type="number" min="0" step="1" data-capdef="1" value="${cfg.capDef||""}"></label>
+      <label class="f">Meta matutino<span><input class="inl" id="metaPctMAT" type="number" min="0" max="100" data-metapct="MAT" value="${Math.round((cfg.metaPct.MAT??0.9)*100)}"> %</span></label>
+      <label class="f">Meta vespertino<span><input class="inl" id="metaPctVES" type="number" min="0" max="100" data-metapct="VES" value="${Math.round((cfg.metaPct.VES??0.85)*100)}"> %</span></label></div>
+    <p class="muted small" style="margin:8px 0 0">La capacidad de cada persona va en su fila; vacía usa la de su jornada o la de por defecto. Con el día de descanso definido, la capacidad se calcula día por día: el día de descanso no cuenta y, en 40 h, sábado y domingo cuentan 5 h (el resto de las horas se reparte entre semana).${state.area==="recovery"?" Recovery: 40 h = 141 servicios por semana, 27 h = 96.":""}${state.area==="nutricion"?" Nutrición: 57 citas por semana (meta matutino 46, vespertino 40).":""}</p>`;
+  if(cfg.modo==="ocupacion")h+=`<div class="row" style="margin-top:12px;align-items:flex-end"><label class="f">Meta ${est?"de aforo del estudio":"del área"}<span><input class="inl" id="metaDef" type="number" min="0" max="100" step="1" data-metadef="1" value="${Math.round(cfg.metaDef*100)}"> %</span></label>
+    <button class="btn ghost small" id="applyMeta">Poner ${Math.round(cfg.metaDef*100)}% a todos</button><span class="muted small">Los nuevos entran con esta meta; en la tabla de abajo puedes cambiar la de cada quien.</span></div>`;
+  if(est){
+    h+=`<h3 style="margin-top:16px">Cupo de la sala</h3><p class="muted" style="margin:2px 0 8px">Lugares por clase en cada sucursal; con esto se calcula el % de aforo${cfg.modo==="ocupacion"?" y el cumplimiento":""}.</p>
+    <div class="row">`+SUCURSALES.map(s=>`<label class="f">${esc(s.nombre)}<input class="inl" id="cupo_${s.id}" type="number" min="0" step="1" data-cupo="${s.id}" value="${cfg.cupos[s.id]==null?"":cfg.cupos[s.id]}" placeholder="–"></label>`).join("")+`</div>`;
+  }
+  if(est&&state.area!=="baile"){
+    const u=su=>cfg.semaforo[su]||SEM_ESP[su+"|"+state.area]||SEM_DEF;
+    h+=`<h3 style="margin-top:16px">Semáforo de asistentes por clase</h3><p class="muted" style="margin:2px 0 8px">Desde cuántos asistentes una clase es amarilla y desde cuántos es verde; menos es rojo. Las clases de baile usan el semáforo de su sala.</p>
+    <div class="scroll"><table style="max-width:520px"><thead><tr><th>Sucursal</th><th class="num">Amarillo desde</th><th class="num">Verde desde</th></tr></thead><tbody>`+
+    SUCURSALES.map(s=>`<tr><td>${esc(s.nombre)}</td>`+[0,1].map(i=>`<td class="num"><input class="inl" id="sem_${s.id}_${i}" type="number" min="0" step="1" data-sem="${s.id}|${i}" value="${u(s.id)[i]}"></td>`).join("")+`</tr>`).join("")+`</tbody></table></div>`;
+  }
+  if(state.area==="baile")h+=`<h3 style="margin-top:16px">Qué clases cuentan como Baile</h3><p class="muted" style="margin:2px 0 8px">Palabras en el nombre de la actividad, separadas por coma. Se guarda al salir del campo y aplica a las clases que subas después.</p>
+    <input class="inl wide" id="baileKw" data-baile="1" value="${esc(state.global.baile.join(", "))}">`;
+  h+=`</div><div class="panel"><h2>${l.equipo} · ${esc(areaNombre(state.area))}</h2><p class="muted" style="margin:2px 0 10px">Los alias son las formas en que el nombre aparece en TrainingGym, separadas por coma. No importan acentos, mayúsculas ni espacios dobles. Un alias solo se busca en los exports de su sucursal.</p>`+
+  (cfg.roster.length?`<div class="scroll"><table><thead><tr><th>Nombre en pizarra</th><th>Sucursal</th><th>Turno</th><th>${cart?"":capf?"Capacidad semanal":prom?"Meta propia por clase":qty?"Meta propia al mes":"Meta % ocupación"}</th>${capf?"<th>Jornada</th><th>Descansa</th><th>Horas por día en fin de semana</th>":""}<th>Alias en TG</th><th></th></tr></thead><tbody>`+
+  cfg.roster.map((r,i)=>`<tr>
+    <td><input class="inl wide" style="min-width:150px" id="r${i}n" data-r="${i}" data-k="nombre" value="${esc(r.nombre)}"></td>
+    <td><select class="inl" id="r${i}s" data-r="${i}" data-k="sucursal">${SUCURSALES.map(s=>`<option value="${s.id}" ${r.sucursal===s.id?"selected":""}>${esc(s.nombre)}</option>`).join("")}</select></td>
+    <td><select class="inl" id="r${i}t" data-r="${i}" data-k="turno"><option value="MAT" ${r.turno==="MAT"?"selected":""}>Matutino</option><option value="VES" ${r.turno==="VES"?"selected":""}>Vespertino</option></select></td>
+    <td>${cart?"":capf
+      ?`<input class="inl" id="r${i}c" type="number" min="0" step="1" data-r="${i}" data-k="capSem" value="${r.capSem==null?"":r.capSem}" placeholder="${(r.jornada&&cfg.capJornada[r.jornada])||cfg.capDef||"–"}" aria-label="Capacidad semanal de ${esc(r.nombre)}"></td>
+      <td><select class="inl" id="r${i}j" data-r="${i}" data-k="jornada"><option value="">–</option>${["40","27"].map(j=>`<option value="${j}" ${String(r.jornada||"")===j?"selected":""}>${j} h</option>`).join("")}</select></td>
+      <td><select class="inl" id="r${i}d" data-r="${i}" data-k="descanso"><option value="">Sin definir</option><option value="fin" ${r.descanso==="fin"?"selected":""}>Un día del fin de semana</option>${[1,2,3,4,5,6,0].map(d=>`<option value="${d}" ${String(r.descanso??"")===String(d)?"selected":""}>${DIAS_LARGO[d]}</option>`).join("")}</select></td>
+      <td><input class="inl" id="r${i}h" type="number" min="0" step="0.5" data-r="${i}" data-k="horasFin" value="${r.horasFin==null?"":r.horasFin}" placeholder="${String(r.jornada)==="40"?5:"–"}" aria-label="Horas por día en fin de semana de ${esc(r.nombre)}">`
+      :qty
+      ?`<input class="inl" id="r${i}g" type="number" min="0" step="1" data-r="${i}" data-k="metaN" value="${r.metaN==null?"":r.metaN}" placeholder="${(v=>v==null?"–":v)(cfg.metasTurno[r.sucursal+"|"+r.turno])}" aria-label="Meta propia de ${esc(r.nombre)}; vacío usa la de su turno">`
+      :`<input class="inl" id="r${i}m" type="number" min="0" max="100" step="1" data-r="${i}" data-k="meta" value="${Math.round(r.meta*100)}"> %`}</td>
+    <td><input class="inl wide" id="r${i}a" data-r="${i}" data-k="alias" value="${esc((r.alias||[]).join(", "))}"></td>
+    <td><button class="btn ghost small" data-rm="${i}">Quitar</button></td></tr>`).join("")+
+  `</tbody></table></div>`:`<p class="muted">Todavía no hay ${l.personas}. Agrégalos aquí o, más rápido, al subir el primer export con “Agregar todos como nuevos”.</p>`)+
+  `<div class="row" style="margin-top:10px"><button class="btn ghost small" id="addCol">Agregar ${l.persona.toLowerCase()}</button></div></div>
+  <div class="panel"><h2>Escalones de bono</h2><p class="muted" style="margin:2px 0 10px">Cumplimiento mínimo contra la meta (100% = llegó exacto a su meta) y cómo se llama el resultado.</p>
+  <table style="max-width:520px"><thead><tr><th>Cumplimiento mínimo</th><th>Resultado</th><th></th></tr></thead><tbody>`+
+  cfg.tiers.map((t,i)=>`<tr><td><input class="inl" id="t${i}m" type="number" step="1" data-t="${i}" data-k="min" value="${Math.round(t.min*100)}"> %</td>
+    <td><input class="inl wide" id="t${i}e" data-t="${i}" data-k="etiqueta" value="${esc(t.etiqueta)}"></td><td><button class="btn ghost small" data-rmt="${i}">Quitar</button></td></tr>`).join("")+
+  `</tbody></table><div class="row" style="margin-top:10px"><button class="btn ghost small" id="addTier">Agregar escalón</button></div></div>`;
+  const extras=Object.entries(cfg.extra||{});
+  if(extras.length)h+=`<div class="panel"><h2>Asignaciones recordadas</h2><div class="scroll"><table><tbody>`+
+    extras.map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v==="__recurso"?"Recurso":v==="__ignorar"?"Ignorado":esc((cfg.roster.find(r=>r.id===v)||{}).nombre||v)}</td><td><button class="btn ghost small" data-rmx="${esc(k)}">Olvidar</button></td></tr>`).join("")+
+    `</tbody></table></div></div>`;
+  h+=`<div class="row"><button class="btn" id="saveCfg" ${dirty?"":"disabled"}>Guardar cambios</button>${dirty?`<button class="btn ghost" id="undoCfg">Descartar cambios</button>`:""}</div>`;
+  return h;
+}
+
+/* ---------- export Excel (respeta área y filtros) ---------- */
+async function exportExcel(){
+  const {columns}=pizarraModel(); const groups=pizarraGroups(); const l=L(); const cfg=cfgOf(state.area);
+  const wb=XLSX.utils.book_new();
+  const aoa=[["Sucursal","Grupo","Indicador",...columns.map(c=>c.ini+" a "+c.fin)]];
+  const push=(suc,name,ids)=>{const ms=columns.map(c=>sumFor(ids,c.cols));
+    aoa.push([suc,name,l.at,...ms.map(m=>m.at)]);
+    aoa.push([suc,name,l.cap,...ms.map(m=>m.cap)]);
+    aoa.push([suc,name,l.ocup,...ms.map(m=>ocup(m)==null?"":+ocup(m).toFixed(4))]);
+    aoa.push([suc,name,"Meta",...ms.map(m=>+metaEff(m,ids).toFixed(4))]);
+    aoa.push([suc,name,"Cumplimiento",...ms.map(m=>cumpOf(m)==null?"":+cumpOf(m).toFixed(4))]);
+  };
+  for(const G of groups){
+    for(const T of G.turnos){for(const id of T.ids)push(G.s.nombre,cfg.roster.find(r=>r.id===id).nombre,[id]);if(G.turnos.length>1)push(G.s.nombre,"T "+T.t,T.ids)}
+    push(G.s.nombre,"Total "+G.s.corto,G.turnos.flatMap(t=>t.ids));
+  }
+  if(groups.length>1)push("Vivo 47","Vivo 47 total",groups.flatMap(G=>G.turnos.flatMap(t=>t.ids)));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(aoa),"Pizarra");
+  const cols=computeRows(selRows()).cols;
+  const rk=rosterSel().map(r=>{const m=sumFor([r.id],cols);return{r,m,o:ocup(m),c:cumpOf(m)}}).filter(x=>x.c!=null).sort((a,b)=>b.c-a.c);
+  const ra=[["Posición",l.persona,"Sucursal","Turno",l.at,l.cap,"% ocupación","Meta","Cumplimiento"]];
+  rk.forEach((x,i)=>ra.push([i+1,x.r.nombre,sucNombre(x.r.sucursal),x.r.turno,x.m.at,x.m.cap,+x.o.toFixed(4),l.qty?goalOf(x.r,cfg):x.r.meta,+x.c.toFixed(4)]));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ra),"Ranking");
+  const ar=[["Periodo","Sucursal","Recurso","Usos","Capacidad","Ocupación"]];
+  for(const c of columns)for(const m of Object.values(c.recursos))ar.push([c.ini+" a "+c.fin,sucNombre(m.su),m.nombre,m.at,m.cap,m.cap?+(m.at/m.cap).toFixed(4):""]);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ar),"Recursos");
+  const br=[["Mes",l.persona,"Sucursal","Turno",l.at,l.cap,"% ocupación","Meta","Cumplimiento","Resultado"]];
+  for(const k of dateOptions().mes)for(const x of bonoRows(k).list)
+    br.push([monthLabel(k),x.r.nombre,sucNombre(x.r.sucursal),x.r.turno,x.m.at,x.m.cap,x.o==null?"":+x.o.toFixed(4),l.qty?goalOf(x.r,cfg):x.r.meta,x.c==null?"":+x.c.toFixed(4),x.m.cap?(x.t?x.t.etiqueta:"No alcanza"):"Sin datos"]);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(br),"Bonos");
+  const out=XLSX.write(wb,{bookType:"xlsx",type:"array"});
+  const tag=state.f.suc==="all"?"Vivo47":sucCorto(state.f.suc);
+  const an=norm(areaNombre(state.area)).replace(/[^a-z0-9]+/g,"_");
+  try{await state.downloads.save({filename:"Pizarra_"+an+"_"+tag+".xlsx",data:new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})});setStatus("Excel descargado")}
+  catch(e){setStatus(e.code==="declined"?"Descarga cancelada":"No se pudo descargar: "+(e.message||e.code))}
+}
+
+/* ---------- eventos ---------- */
+function setArea(a){
+  if(a!=="resumen"&&!areaById(a))return;
+  state.area=a; state.navOpen=false; state.confirmDel=null; state.colab=null;
+  lsSet(LS_A,a);
+  render(); window.scrollTo({top:0});
+}
+async function handleFile(file){
+  if(!file)return;
+  setStatus("Leyendo "+file.name+"…");
+  try{state.pending=await readFile(file)}catch(e){state.pending={fileName:file.name,area:state.area==="resumen"?"deportes":state.area,error:"No pude abrir el archivo: "+e.message}}
+  idleStatus();
+  if(state.area!=="resumen")state.tab="cargar";
+  render(); if(state.area==="resumen")window.scrollTo({top:0});
+}
+// cada fila va a su semana (Fecha) o a su rango (Fecha de inicio / fin); el resto al periodo capturado
+function fileRanges(p){
+  const by={}, rest=[];
+  for(const r of p.rows){
+    if(r.f){const w=iso(monday(parseISO(r.f)));const k=w+"|"+iso(addDays(parseISO(w),6));(by[k]=by[k]||[]).push(r)}
+    else if(r.pi&&r.pf){const k=r.pi+"|"+r.pf;(by[k]=by[k]||[]).push(r)}
+    else rest.push(r);
+  }
+  const periods=Object.entries(by).map(([k,rows])=>{const [inicio,fin]=k.split("|");return{inicio,fin,rows}});
+  if(!periods.length||(!p.hasFecha&&rest.some(r=>norm(r.t)!=="total"))){
+    const ini=p.inicio, fin=p.fin;
+    if(!ini||!fin||fin<ini)return null;
+    const same=periods.find(x=>x.inicio===ini&&x.fin===fin);
+    if(same)same.rows=same.rows.concat(rest);else periods.push({inicio:ini,fin,rows:rest});
+  }
+  return periods;
+}
+function periodId(area,suc,x){return "p_"+area+"_"+suc+"_"+x.inicio+"_"+x.fin}
+// ids de antes de tener áreas (solo Recovery)
+function legacyIds(area,suc,x){return area!=="recovery"?[]:["p_"+suc+"_"+x.inicio+"_"+x.fin].concat(suc==="NAC"?["p_"+x.inicio+"_"+x.fin]:[])}
+async function commitMulti(p,force){
+  const suc=p.sucursal||"NAC";
+  const periods=fileRanges(p); if(!periods){setStatus("Revisa las fechas del periodo");return}
+  const assigns=Object.entries(p.assign||{}).filter(([k,v])=>v);
+  const targets=new Set();
+  for(const r of p.rows){const res=routeName(r.t,r.su||suc);if(res.area)targets.add(res.area)}
+  for(const [k,v] of assigns){if(v.startsWith("area:"))targets.add(v.slice(5));if(v==="__recurso")targets.add("recovery")}
+  const existing=new Set(state.periods.map(x=>x.id));
+  let clash=0;
+  for(const a of targets)for(const x of periods)if(existing.has(periodId(a,suc,x))||legacyIds(a,suc,x).some(id=>existing.has(id)))clash++;
+  if(clash&&!force){p.clash=clash;render();return}
+  setStatus("Guardando…");
+  try{
+    // nombres nuevos → equipo de su área; "no contar nunca" → lista general
+    const names={};for(const x of pendingFacts(p)){const k=norm(x.r.t);if(!names[k])names[k]={nombre:x.r.t,su:x.su}}
+    const cfgs={}; let g=null;
+    assigns.forEach(([k,v],i)=>{
+      if(v==="__ignorar"){g=g||clone(state.global);g.extra[k]="__ignorar"}
+      else if(v==="__recurso"){const c=cfgs.recovery||(cfgs.recovery=clone(cfgOf("recovery")));c.extra[k]="__recurso"}
+      else if(v.startsWith("area:")){const a=v.slice(5), nm=names[k]||{nombre:k,su:suc};
+        const c=cfgs[a]||(cfgs[a]=clone(cfgOf(a)));
+        c.roster.push({id:"c"+Date.now().toString(36)+i,nombre:titleCase(nm.nombre),sucursal:nm.su,turno:"MAT",meta:c.metaDef,alias:[k]})}
+    });
+    for(const [a,c] of Object.entries(cfgs))await saveConfig(c,a);
+    if(g)await saveGlobal(g);
+    let n=0;
+    for(const a of AREAS)for(const x of periods){
+      const rows=x.rows.filter(r=>routeName(r.t,r.su||suc).area===a.id);
+      if(!rows.length)continue;
+      for(const lg of legacyIds(a.id,suc,x))if(existing.has(lg))await deletePeriod(lg);
+      await savePeriod({id:periodId(a.id,suc,x),area:a.id,sucursal:suc,inicio:x.inicio,fin:x.fin,archivo:p.fileName,cargado:new Date().toISOString(),rows});n++;
+    }
+    state.pending=null;
+    if(state.f.suc!=="all"&&state.f.suc!==suc){state.f.suc=suc;saveF()}
+    render(); setStatus(n+" periodo"+(n===1?"":"s")+" guardado"+(n===1?"":"s")+" en "+new Set([...targets]).size+" áreas");
+  }catch(e){setStatus("No se pudo guardar: "+(e.message||e.code))}
+}
+async function commitPending(force){
+  const p=state.pending; if(!p||p.error)return;
+  if(p.area==="deportes")return p.clases?commitClases(p,force):commitMulti(p,force);
+  const suc=p.sucursal||"NAC", area=p.area;
+  const periods=fileRanges(p); if(!periods){setStatus("Revisa las fechas del periodo");return}
+  const idOf=x=>periodId(area,suc,x);
+  const legacy=x=>legacyIds(area,suc,x);
+  const existing=new Set(state.periods.map(x=>x.id));
+  const clash=periods.filter(x=>existing.has(idOf(x))||legacy(x).some(id=>existing.has(id)));
+  if(clash.length&&!force){p.clash=clash.length;render();return}
+  setStatus("Guardando…");
+  try{
+    const assigns=Object.entries(p.assign||{}).filter(([k,v])=>v);
+    if(assigns.length){
+      const cfg=clone(cfgOf(area)); const nombres={};
+      for(const x of Object.values(computeRows(pendingFacts(p),area).otros))nombres[norm(x.nombre)]=x.nombre;
+      assigns.forEach(([k,v],i)=>{
+        if(v==="__nuevo"){
+          const id="c"+Date.now().toString(36)+i;
+          cfg.roster.push({id,nombre:titleCase(nombres[k]||k),sucursal:suc,turno:"MAT",meta:cfg.metaDef,alias:[k]});
+        }else cfg.extra[k]=v;
+      });
+      await saveConfig(cfg,area);
+    }
+    for(const x of periods){
+      for(const lg of legacy(x))if(existing.has(lg))await deletePeriod(lg);
+      await savePeriod({id:idOf(x),area,sucursal:suc,inicio:x.inicio,fin:x.fin,archivo:p.fileName,cargado:new Date().toISOString(),rows:x.rows});
+    }
+    state.pending=null; state.tab="tablero";
+    if(state.f.suc!=="all"&&state.f.suc!==suc){state.f.suc=suc;saveF()}
+    idleStatus(); render();
+  }catch(e){setStatus("No se pudo guardar: "+(e.message||e.code))}
+}
+function editCfg(fn){
+  if(!state.dirty||state.dirty.area!==state.area)state.dirty={area:state.area,cfg:clone(cfgOf(state.area))};
+  fn(state.dirty.cfg);
+}
+function stepValor(d){
+  const f=state.f, list=dateOptions()[f.rango]||[], i=list.indexOf(f.valor[f.rango]), j=i+d;
+  if(j>=0&&j<list.length){f.valor[f.rango]=list[j];saveF();render()}
+}
+
+document.addEventListener("click",e=>{
+  const t=e.target.closest("button,[data-tab],#drop"); if(!t)return;
+  const d=t.dataset;
+  if(d.area!=null){setArea(d.area);return}
+  if(d.nav){state.navOpen=!state.navOpen;renderSide();return}
+  if(d.tab){state.tab=d.tab;render();return}
+  if(d.go){state.tab=d.go;render();return}
+  if(d.fsuc!=null){state.f.suc=d.fsuc;saveF();render();return}
+  if(d.fturno!=null){state.f.turno=d.fturno;saveF();render();return}
+  if(d.frango!=null){state.f.rango=d.frango;saveF();render();return}
+  if(d.slot!=null){state.open[d.slot]=!state.open[d.slot];render();return}
+  if(d.hclear!=null){state.f.hDesde="";state.f.hHasta="";saveF();render();return}
+  if(d.fvalid!=null){state.f.valid=d.fvalid==="1";saveF();render();return}
+  if(d.fstep!=null){stepValor(+d.fstep);return}
+  if(d.colab!=null){const e=cfgOf(state.area).roster.find(x=>x.id===d.colab);state.colab=d.colab;state.colabSuc=e?e.sucursal:"all";state.tab="colaborador";render();window.scrollTo({top:0});return}
+  if(d.csuc!=null){state.colabSuc=d.csuc;render();return}
+  if(d.hview!=null){state.hview=d.hview;render();return}
+  if(d.colabarea!=null){const [a,id]=d.colabarea.split("|");if(!areaById(a))return;state.area=a;lsSet(LS_A,a);state.tab="colaborador";state.colab=id;state.colabSuc="all";render();window.scrollTo({top:0});return}
+  if(t.id==="drop"){document.getElementById("file").click();return}
+  if(t.id==="ai"){aiOrganize();return}
+  if(t.id==="savePending"){commitPending(false);return}
+  if(t.id==="replacePending"){commitPending(true);return}
+  if(t.id==="cancelPending"){state.pending=null;render();return}
+  if(t.id==="allNew"&&state.pending){const p=state.pending;
+    for(const x of Object.values(computeRows(pendingFacts(p),p.area).otros)){const k=norm(x.nombre);if(!p.assign[k])p.assign[k]="__nuevo"}
+    render();return}
+  if(t.id==="export"){exportExcel();return}
+  if(d.rmg){const g=clone(state.global);delete g.extra[d.rmg];saveGlobal(g).catch(err=>setStatus("No se pudo guardar: "+(err.message||err.code)));return}
+  if(d.askdel){state.confirmDel=d.askdel;render();return}
+  if(d.nodel){state.confirmDel=null;render();return}
+  if(d.del){state.confirmDel=null;deletePeriod(d.del).catch(err=>setStatus("No se pudo eliminar: "+(err.message||err.code)));return}
+  if(d.metric){state.metric=d.metric;render();return}
+  if(t.id==="addCol"){editCfg(c=>c.roster.push({id:"c"+Date.now().toString(36),nombre:"Nuevo",sucursal:state.f.suc!=="all"?state.f.suc:"NAC",turno:"MAT",meta:c.metaDef,alias:[]}));render();return}
+  if(d.rm){editCfg(c=>c.roster.splice(+d.rm,1));render();return}
+  if(t.id==="saveCap"&&state.capDirty){const x=state.capDirty;state.capDirty=null;saveCaptura(x.area,x.mes,x.datos).then(()=>setStatus("Captura guardada")).catch(err=>setStatus("No se pudo guardar: "+(err.message||err.code)));return}
+  if(t.id==="undoCap"){state.capDirty=null;render();return}
+  if(t.id==="saveDia"&&state.diaDirty){const x=state.diaDirty;state.diaDirty=null;saveDiario(x.mes,x.dias).then(()=>setStatus("Registro guardado")).catch(err=>setStatus("No se pudo guardar: "+(err.message||err.code)));return}
+  if(t.id==="undoDia"){state.diaDirty=null;render();return}
+  if(t.id==="applyMeta"){editCfg(c=>c.roster.forEach(r=>r.meta=c.metaDef));render();return}
+  if(t.id==="addTier"){editCfg(c=>c.tiers.push({min:0.9,etiqueta:"Nuevo escalón"}));render();return}
+  if(d.rmt){editCfg(c=>c.tiers.splice(+d.rmt,1));render();return}
+  if(d.rmx){editCfg(c=>{delete c.extra[d.rmx]});render();return}
+  if(t.id==="saveCfg"&&state.dirty){const x=state.dirty;state.dirty=null;saveConfig(x.cfg,x.area).catch(err=>setStatus("No se pudo guardar: "+(err.message||err.code)));return}
+  if(t.id==="undoCfg"){state.dirty=null;render();return}
+});
+document.addEventListener("keydown",e=>{if(e.target.id==="drop"&&(e.key==="Enter"||e.key===" ")){e.preventDefault();document.getElementById("file").click()}});
+document.addEventListener("change",e=>{
+  const t=e.target;
+  if(t.id==="file"){handleFile(t.files[0]);t.value="";return}
+  if(t.id==="hDesde"||t.id==="hHasta"){state.f[t.id]=t.value;saveF();render();return}
+  if(t.id==="fDesde"||t.id==="fHasta"){const p=(state.f.valor.fechas||"|").split("|");if(t.id==="fDesde")p[0]=t.value;else p[1]=t.value;
+    if(p[0]&&p[1]){state.f.valor.fechas=p.join("|");saveF();render()}return}
+  if(t.id==="fval"){state.f.valor[state.f.rango]=t.value;saveF();render();return}
+  if(t.id==="colSel"){state.colab=t.value;state.colabSuc="all";render();return}
+  if(t.id==="bonoSel"){state.bonoMonth=t.value;render();return}
+  if(t.id==="pSuc"&&state.pending){state.pending.sucursal=t.value;state.pending.sucAuto=false;state.pending.clash=0;render();return}
+  if(t.id==="pIni"&&state.pending){state.pending.inicio=t.value;state.pending.clash=0;return}
+  if(t.id==="pFin"&&state.pending){state.pending.fin=t.value;state.pending.clash=0;return}
+  if(t.dataset.assign!=null&&state.pending){state.pending.assign[t.dataset.assign]=t.value;return}
+  if(t.dataset.sala!=null&&state.pending){const p=state.pending;p.salaAssign=p.salaAssign||{};p.salaAssign[t.dataset.sala]=t.value;p.clash=0;render();return}
+  if(t.dataset.r!=null){const i=+t.dataset.r,k=t.dataset.k;editCfg(c=>{const r=c.roster[i];
+    if(k==="meta")r.meta=Math.max(0,num(t.value))/100;
+    else if(k==="capSem"||k==="horasFin"){if(t.value.trim()==="")delete r[k];else r[k]=Math.max(0,num(t.value))}
+    else if(k==="jornada"||k==="descanso"){if(t.value==="")delete r[k];else r[k]=t.value}
+    else if(k==="metaN"){if(t.value.trim()==="")delete r.metaN;else r.metaN=Math.max(0,num(t.value))}
+    else if(k==="alias")r.alias=t.value.split(",").map(s=>s.trim()).filter(Boolean);else r[k]=t.value});render();return}
+  if(t.dataset.cfg!=null){const k=t.dataset.cfg;editCfg(c=>{c[k]=t.value.trim();if(k==="modo"&&c.modo==="cantidad"&&!c.unidad)c.unidad="completadas"});render();return}
+  if(t.dataset.metadef!=null){editCfg(c=>{c.metaDef=Math.max(0,num(t.value))/100});render();return}
+  if(t.dataset.sem!=null){const [k,i]=t.dataset.sem.split("|");editCfg(c=>{const cur=(c.semaforo[k]||SEM_ESP[k+"|"+state.area]||SEM_DEF).slice();cur[+i]=Math.max(0,num(t.value));c.semaforo[k]=cur});render();return}
+  if(t.dataset.capdef!=null){editCfg(c=>{c.capDef=Math.max(0,num(t.value))});render();return}
+  if(t.dataset.metapct!=null){const k=t.dataset.metapct;editCfg(c=>{c.metaPct=Object.assign({},c.metaPct);c.metaPct[k]=Math.max(0,num(t.value))/100});render();return}
+  if(t.dataset.kpi!=null){const k=t.dataset.kpi;editCfg(c=>{c.kpi=Object.assign({},c.kpi);c.kpi[k]=(k==="rutina"||k==="activos")?Math.max(0,num(t.value))/100:Math.max(0,num(t.value))});render();return}
+  if(t.dataset.cap!=null){const [id,campo]=t.dataset.cap.split("|"),mes=capMesFor(state.area);
+    if(!state.capDirty||state.capDirty.area!==state.area||state.capDirty.mes!==mes)state.capDirty={area:state.area,mes,datos:clone(capOf(state.area,mes))};
+    const d=state.capDirty.datos[id]=state.capDirty.datos[id]||{};if(t.value.trim()==="")delete d[campo];else d[campo]=Math.max(0,num(t.value));render();return}
+  if(t.id==="capMesSel"){state.capMes=t.value;state.capDirty=null;state.diaDirty=null;render();return}
+  if(t.dataset.dia!=null){const [d,campo,su]=t.dataset.dia.split("|"),mes=d.slice(0,7);
+    if(!state.diaDirty||state.diaDirty.mes!==mes)state.diaDirty={mes,dias:clone((state.diario[mes]||{}).dias||{})};
+    const day=state.diaDirty.dias[d]=state.diaDirty.dias[d]||{}, o=day[campo]=day[campo]||{};
+    if(t.value.trim()==="")delete o[su];else o[su]=Math.max(0,num(t.value));render();return}
+  if(t.dataset.metaacc!=null){editCfg(c=>{c.metaAcc=Math.max(0,num(t.value))/100});render();return}
+  if(t.dataset.metaing!=null){editCfg(c=>{c.metaIng=Math.max(0,num(t.value))});render();return}
+  if(t.dataset.pf!=null){const g=clone(state.global);g.pctFuerza=Object.assign({},g.pctFuerza);g.pctFuerza[t.dataset.pf]=Math.max(0,num(t.value))/100;saveGlobal(g).catch(err=>setStatus("No se pudo guardar: "+(err.message||err.code)));return}
+  if(t.dataset.cupo!=null){const k=t.dataset.cupo;editCfg(c=>{if(t.value.trim()==="")delete c.cupos[k];else c.cupos[k]=Math.max(0,num(t.value))});render();return}
+  if(t.dataset.baile!=null){const g=clone(state.global);g.baile=t.value.split(",").map(x=>x.trim()).filter(Boolean);saveGlobal(g).catch(err=>setStatus("No se pudo guardar: "+(err.message||err.code)));return}
+  if(t.dataset.mt!=null){const k=t.dataset.mt;editCfg(c=>{if(t.value.trim()==="")delete c.metasTurno[k];else c.metasTurno[k]=Math.max(0,num(t.value))});render();return}
+  if(t.dataset.t!=null){const i=+t.dataset.t,k=t.dataset.k;editCfg(c=>{c.tiers[i][k]=k==="min"?num(t.value)/100:t.value});render();return}
+});
+document.addEventListener("dragover",e=>{const d=e.target.closest&&e.target.closest("#drop");if(d){e.preventDefault();d.classList.add("over")}});
+document.addEventListener("dragleave",e=>{const d=e.target.closest&&e.target.closest("#drop");if(d)d.classList.remove("over")});
+document.addEventListener("drop",e=>{const d=e.target.closest&&e.target.closest("#drop");if(d){e.preventDefault();handleFile(e.dataTransfer.files[0])}});
+
+render();
+connect();
+})();
+</script>
+</body>
+</html>
