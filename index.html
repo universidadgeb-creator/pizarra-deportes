@@ -709,7 +709,7 @@ async function saveGlobal(g){
 
 function attachDb(db,label){
   state.db=db; setStatus(label);
-  const err=e=>setStatus(/does not exist|42P01|relation/i.test(e.message||"")?"Falta crear la tabla en Supabase (corre schema.sql)":"Sin conexión a la base: "+e.message);
+  const err=e=>setStatus(/does not exist|42P01|relation|PGRST205|Could not find the table/i.test(e.message||"")?"Falta crear la tabla en Supabase (corre schema.sql)":"Sin conexión a la base: "+e.message);
   db.collection("periodos").onSnapshot(s=>{state.periods=s.docs.map(d=>Object.assign({id:d.id},d.data()));render()},err);
   db.collection("diario").onSnapshot(s=>{state.diario={};for(const d of s.docs)state.diario[d.id]=clone(d.data());render()},err);
   db.collection("capturas").onSnapshot(s=>{state.capturas={};for(const d of s.docs)state.capturas[d.id]=clone(d.data());render()},err);
